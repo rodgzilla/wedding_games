@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a French-language Wordle clone for wedding guests, playable on any device via a static website (GitHub Pages), with a user-editable word list.
+**Goal:** Build a French-language Wordle clone for wedding guests, playable on any device via a static website (GitHub Pages), with a user-editable answer list and Lexique-based guess validation.
 
-**Architecture:** A single-page browser app with zero dependencies. `index.html` holds the HTML structure and all CSS; `game.js` holds all game logic and DOM manipulation; `words.txt` is fetched at startup and parsed into a word list.
+**Architecture:** A single-page browser app with zero dependencies. `index.html` holds the HTML structure and all CSS; `game.js` holds all game logic and DOM manipulation; `words.txt` (answers) and `dictionary.txt` (valid guesses, from Lexique) are both fetched at startup. A one-off Python script generates `dictionary.txt` from the Lexique383.tsv download.
 
-**Tech Stack:** Plain HTML5, CSS3, vanilla JavaScript (ES2020). No build step. Hosted on GitHub Pages.
+**Tech Stack:** Plain HTML5, CSS3, vanilla JavaScript (ES2020). No build step. Python 3 for the one-off dictionary generation script. Hosted on GitHub Pages.
 
 ## Global Constraints
 
@@ -14,9 +14,11 @@
 - Keyboard layout: AZERTY
 - Word lengths: variable — determined per round by the picked word
 - Max guesses per round: 6
-- No external libraries or frameworks
+- No external libraries or frameworks (game code)
 - Must work on mobile browsers (touch) and desktop browsers
 - Local testing: `python3 -m http.server` inside `wordle_game/` (required — `fetch()` needs HTTP)
+- Guess validation: accept if word is in `dictionary.txt` OR `words.txt`; reject with shake + "Mot non reconnu" otherwise
+- Lexique filter: `freqfilms2 + freqlivres >= 1.0`, purely alphabetic (`str.isalpha()`), stored uppercase
 
 ---
 
@@ -24,8 +26,9 @@
 
 **Files:**
 - Create: `wordle_game/words.txt`
-- Create: `wordle_game/index.html` (empty shell — content added in Task 2)
-- Create: `wordle_game/game.js` (empty stub — content added in Tasks 3–6)
+- Create: `wordle_game/index.html` (empty shell — content added in Task 3)
+- Create: `wordle_game/game.js` (empty stub — content added in Tasks 4–7)
+- Create: `wordle_game/scripts/` (directory — script added in Task 2)
 
 **Interfaces:**
 - Produces: a `wordle_game/` directory on a `wordle-game` git branch, ready to develop in
@@ -45,7 +48,7 @@ All subsequent tasks are executed from inside `../wedding_games_wordle`.
 - [ ] **Step 2: Create the directory and placeholder files**
 
 ```bash
-mkdir wordle_game
+mkdir -p wordle_game/scripts
 ```
 
 Create `wordle_game/words.txt` with sample French words (one per line — the organiser will replace these):
@@ -85,7 +88,7 @@ Create `wordle_game/game.js` as an empty file.
 
 ```bash
 ls wordle_game/
-# Expected: game.js  index.html  words.txt
+# Expected: game.js  index.html  scripts/  words.txt
 ```
 
 - [ ] **Step 4: Commit**
@@ -97,7 +100,114 @@ git commit -m "feat: scaffold wordle_game directory with word list stub"
 
 ---
 
-### Task 2: HTML structure and CSS
+### Task 2: Generate Lexique dictionary
+
+**Files:**
+- Create: `wordle_game/scripts/generate_dictionary.py`
+- Create: `wordle_game/dictionary.txt` (generated output — committed to repo so GitHub Pages can serve it)
+
+**Interfaces:**
+- Consumes: `Lexique383.tsv` downloaded from `http://www.lexique.org/databases/Lexique383/Lexique383.tsv`
+- Produces: `wordle_game/dictionary.txt` — one uppercase French word per line, frequency-filtered
+
+- [ ] **Step 1: Create `wordle_game/scripts/generate_dictionary.py`**
+
+```python
+#!/usr/bin/env python3
+"""Generate dictionary.txt from Lexique383.tsv.
+
+Usage:
+    python3 scripts/generate_dictionary.py path/to/Lexique383.tsv
+
+Output:
+    wordle_game/dictionary.txt — one uppercase word per line, frequency-filtered
+"""
+import csv
+import os
+import sys
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} path/to/Lexique383.tsv", file=sys.stderr)
+        sys.exit(1)
+
+    tsv_path = sys.argv[1]
+    out_path = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), '..', 'dictionary.txt')
+    )
+
+    words = set()
+    with open(tsv_path, encoding='utf-8') as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        for row in reader:
+            try:
+                freq = float(row['freqfilms2'] or 0) + float(row['freqlivres'] or 0)
+            except (ValueError, KeyError):
+                continue
+            if freq < 1.0:
+                continue
+            word = row['ortho'].strip().upper()
+            if word.isalpha():
+                words.add(word)
+
+    with open(out_path, 'w', encoding='utf-8') as f:
+        for word in sorted(words):
+            f.write(word + '\n')
+
+    print(f"Wrote {len(words)} words to {out_path}")
+
+
+if __name__ == '__main__':
+    main()
+```
+
+- [ ] **Step 2: Download Lexique383.tsv and run the script**
+
+```bash
+curl -L -o /tmp/Lexique383.tsv \
+  "http://www.lexique.org/databases/Lexique383/Lexique383.tsv"
+
+python3 wordle_game/scripts/generate_dictionary.py /tmp/Lexique383.tsv
+```
+
+Expected output: `Wrote NNNNN words to .../wordle_game/dictionary.txt` (typically 30,000–60,000 words).
+
+- [ ] **Step 3: Sanity-check the output**
+
+```bash
+wc -l wordle_game/dictionary.txt
+# Expected: 30000–60000 lines
+
+head -20 wordle_game/dictionary.txt
+# Expected: uppercase French words, one per line, sorted alphabetically
+
+grep -c "^[A-ZÀ-Ÿ]*$" wordle_game/dictionary.txt
+# Expected: matches wc -l (all lines are purely alphabetic uppercase)
+```
+
+- [ ] **Step 4: Verify answer words are in the dictionary (or note exceptions)**
+
+```bash
+while IFS= read -r word; do
+  if ! grep -qx "$word" wordle_game/dictionary.txt; then
+    echo "NOT IN DICT: $word"
+  fi
+done < wordle_game/words.txt
+```
+
+If any answer word is missing from `dictionary.txt`, that word is still valid to guess (the game code handles this — see Task 6). No action required here.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add wordle_game/scripts/generate_dictionary.py wordle_game/dictionary.txt
+git commit -m "feat: add Lexique dictionary generation script and dictionary.txt"
+```
+
+---
+
+### Task 3: HTML structure and CSS
 
 **Files:**
 - Modify: `wordle_game/index.html` (replace stub with full markup + all styles)
@@ -265,21 +375,21 @@ git commit -m "feat: add HTML structure and full CSS for Wordle UI"
 
 ---
 
-### Task 3: Word loading, random selection, and grid rendering
+### Task 4: Word loading, dictionary loading, and grid rendering
 
 **Files:**
 - Modify: `wordle_game/game.js`
 
 **Interfaces:**
-- Consumes: `#grid` DOM element; `words.txt` via `fetch()`
+- Consumes: `#grid` DOM element; `words.txt` and `dictionary.txt` via `fetch()`
 - Produces:
-  - `init()` — async startup function called on page load
+  - `init()` — async startup; fetches both files in parallel, populates `words`, `validGuesses`
   - `startRound()` — resets state and renders a fresh grid for a new word
   - `getTile(row, col)` — returns the tile DOM element at position (row, col)
   - `updateCurrentRow()` — re-renders the active row to match `currentGuess`
-  - Module-level state: `words`, `target`, `currentGuess`, `currentRow`, `gameOver`
+  - Module-level state: `words` (`string[]`), `validGuesses` (`Set<string>`), `target`, `currentGuess`, `currentRow`, `gameOver`, `keyColors`
 
-- [ ] **Step 1: Write `game.js` with word loading and grid**
+- [ ] **Step 1: Write `game.js` with word and dictionary loading, and grid rendering**
 
 ```javascript
 const MAX_GUESSES = 6;
@@ -293,6 +403,7 @@ const AZERTY = [
 ];
 
 let words = [];
+let validGuesses = new Set();
 let target = '';
 let currentGuess = '';
 let currentRow = 0;
@@ -302,11 +413,21 @@ let keyColors = {};
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  const response = await fetch('words.txt');
-  const text = await response.text();
-  words = text.split('\n')
+  const [wordsText, dictText] = await Promise.all([
+    fetch('words.txt').then(r => r.text()),
+    fetch('dictionary.txt').then(r => r.text()),
+  ]);
+
+  words = wordsText.split('\n')
     .map(w => w.trim().toUpperCase())
     .filter(w => w.length > 0);
+
+  const dictWords = dictText.split('\n')
+    .map(w => w.trim().toUpperCase())
+    .filter(w => w.length > 0);
+
+  validGuesses = new Set([...dictWords, ...words]);
+
   startRound();
 }
 
@@ -358,12 +479,12 @@ function updateCurrentRow() {
   }
 }
 
-// ── Keyboard (stub — filled in Task 4) ───────────────────────────────────────
+// ── Keyboard (stub — filled in Task 5) ───────────────────────────────────────
 
 function renderKeyboard() {}
 function updateKeyColors() {}
 
-// ── Round end (stub — filled in Task 6) ──────────────────────────────────────
+// ── Round end (stub — filled in Task 7) ──────────────────────────────────────
 
 function showMessage(text) {
   document.getElementById('message').textContent = text;
@@ -383,26 +504,27 @@ Open `http://localhost:8000`. You should see a 6-row grid whose column count mat
 ```javascript
 console.log('Target:', target, '— Length:', target.length);
 console.log('Words loaded:', words.length);
+console.log('Valid guesses loaded:', validGuesses.size);
 ```
 
-Both should print non-zero values.
+All three should print non-zero values. `validGuesses.size` should be in the tens of thousands.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add wordle_game/game.js
-git commit -m "feat: add word loading, random selection, and grid rendering"
+git commit -m "feat: add word and dictionary loading, random selection, and grid rendering"
 ```
 
 ---
 
-### Task 4: Keyboard rendering and input handling
+### Task 5: Keyboard rendering and input handling
 
 **Files:**
 - Modify: `wordle_game/game.js` (replace `renderKeyboard` and `updateKeyColors` stubs; add `handleKey` and physical keyboard listener)
 
 **Interfaces:**
-- Consumes: `#keyboard` DOM element; `currentGuess`, `target`, `gameOver`, `keyColors` state; `updateCurrentRow()` from Task 3
+- Consumes: `#keyboard` DOM element; `currentGuess`, `target`, `gameOver`, `keyColors` state; `updateCurrentRow()` from Task 4
 - Produces:
   - `renderKeyboard()` — renders AZERTY rows with clickable buttons
   - `updateKeyColors()` — updates key button CSS classes from `keyColors` map
@@ -411,7 +533,7 @@ git commit -m "feat: add word loading, random selection, and grid rendering"
 
 - [ ] **Step 1: Replace the keyboard stubs and add input handling in `game.js`**
 
-Replace the two stub functions and add the listener. The surrounding code (init, grid, etc.) stays unchanged.
+Replace the two stub functions and add the listener. The surrounding code stays unchanged.
 
 ```javascript
 // ── Keyboard ──────────────────────────────────────────────────────────────────
@@ -466,7 +588,7 @@ function handleKey(key) {
   }
 }
 
-// ── Guess logic (stub — filled in Task 5) ────────────────────────────────────
+// ── Guess logic (stub — filled in Task 6) ────────────────────────────────────
 
 function submitGuess() {}
 ```
@@ -489,19 +611,19 @@ git commit -m "feat: add AZERTY keyboard rendering and input handling"
 
 ---
 
-### Task 5: Guess submission and color feedback
+### Task 6: Guess submission, dictionary validation, and color feedback
 
 **Files:**
 - Modify: `wordle_game/game.js` (replace `submitGuess` stub; add `computeFeedback`, `revealRow`, `updateKeyboardColors`, `shakeRow`)
 
 **Interfaces:**
-- Consumes: `currentGuess`, `target`, `currentRow`, `keyColors`; `getTile()`, `updateKeyColors()` from earlier tasks
+- Consumes: `currentGuess`, `target`, `currentRow`, `keyColors`, `validGuesses`; `getTile()`, `updateKeyColors()` from earlier tasks
 - Produces:
+  - `submitGuess()` — validates length, validates word in `validGuesses`, then computes feedback
   - `computeFeedback(guess, target)` → `string[]` — array of `'green'|'yellow'|'grey'` per letter
   - `revealRow(rowIndex, guess, feedback, onDone)` — animates tiles and calls `onDone` when done
   - `updateKeyboardColors(guess, feedback)` — merges feedback into `keyColors` (green > yellow > grey) and repaints keys
   - `shakeRow(rowIndex)` — plays shake animation on the given row
-  - `submitGuess()` — validates, computes feedback, triggers reveal, advances row
 
 - [ ] **Step 1: Verify `computeFeedback` logic in the browser console before wiring it up**
 
@@ -553,6 +675,13 @@ function submitGuess() {
     shakeRow(currentRow);
     return;
   }
+  if (!validGuesses.has(currentGuess)) {
+    shakeRow(currentRow);
+    showMessage('Mot non reconnu');
+    setTimeout(() => showMessage(''), 1500);
+    return;
+  }
+  showMessage('');
   const feedback = computeFeedback(currentGuess, target);
   revealRow(currentRow, currentGuess, feedback, () => {
     updateKeyboardColors(currentGuess, feedback);
@@ -623,36 +752,35 @@ function shakeRow(rowIndex) {
   row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
 }
 
-// ── Round end (stub — filled in Task 6) ──────────────────────────────────────
+// ── Round end (stub — filled in Task 7) ──────────────────────────────────────
 
 function endGame(won) {}
 ```
 
 - [ ] **Step 3: Serve and manually verify**
 
-Open `http://localhost:8000`. Type a guess of the correct length and press Enter:
+Open `http://localhost:8000`. Test all three submit paths:
 
-- Tiles should flip one by one with green/yellow/grey colors
-- On-screen keyboard keys should update to the same colors
-- Submitting an incomplete guess should shake the row
-- After filling all 6 rows without winning, nothing breaks (endGame is a stub)
+1. **Short guess:** type fewer letters than word length, press Enter → row shakes, no message
+2. **Unknown word:** type a random sequence of the right length (e.g., "ZZZZZZ"), press Enter → row shakes, "Mot non reconnu" appears for 1.5 s then clears
+3. **Known word:** type a real French word of the correct length, press Enter → tiles flip with green/yellow/grey colors, keyboard updates
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add wordle_game/game.js
-git commit -m "feat: add guess submission, color feedback, and tile reveal animation"
+git commit -m "feat: add guess validation, color feedback, and tile reveal animation"
 ```
 
 ---
 
-### Task 6: Round end and replay
+### Task 7: Round end and replay
 
 **Files:**
 - Modify: `wordle_game/game.js` (replace `endGame` stub; wire up replay button)
 
 **Interfaces:**
-- Consumes: `#message`, `#replay-btn` DOM elements; `startRound()` from Task 3
+- Consumes: `#message`, `#replay-btn` DOM elements; `startRound()` from Task 4
 - Produces:
   - `endGame(won)` — sets `gameOver`, shows message, shows replay button
   - Replay button click → `startRound()`
@@ -671,15 +799,15 @@ function endGame(won) {
 document.getElementById('replay-btn').addEventListener('click', startRound);
 ```
 
-Remove the old `endGame` stub and the comment `// ── Round end (stub — filled in Task 6)`.
+Remove the old `endGame` stub and the comment `// ── Round end (stub — filled in Task 7)`.
 
 - [ ] **Step 2: Serve and verify the win flow**
 
 Open `http://localhost:8000`. Open the console and run:
 
 ```javascript
-// Cheat: set target to a short known word so you can win immediately
 target = 'NON';
+validGuesses.add('NON');
 renderGrid();
 ```
 
@@ -690,8 +818,8 @@ Type `NON` and press Enter. You should see:
 
 - [ ] **Step 3: Verify the lose flow**
 
-Reload and make 6 wrong guesses (type random letters of the correct length). You should see:
-- The actual word revealed in the message (e.g., `Le mot était : MARIAGE`)
+Reload. Open the console, check `target`, then make 6 guesses of words that are in `validGuesses` but wrong. After the 6th, you should see:
+- `Le mot était : [WORD]` in the message area
 - "Rejouer" button appears
 
 - [ ] **Step 4: Verify replay**
@@ -706,5 +834,5 @@ Click "Rejouer". You should see:
 
 ```bash
 git add wordle_game/game.js
-git commit -m "feat: add round end detection and replay flow — game complete"
+git commit -m "feat: add round end detection and replay — game complete"
 ```
