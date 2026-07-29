@@ -221,9 +221,15 @@ function shakeRow(rowIndex) {
   row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
 }
 
-// ── Round end (stub — filled in Task 7) ──────────────────────────────────────
+// ── Round end ─────────────────────────────────────────────────────────────────
 
-function endGame(won) {}
+function endGame(won) {
+  gameOver = true;
+  showMessage(won ? 'Bravo !' : `Le mot était : ${target}`);
+  document.getElementById('replay-btn').style.display = 'inline-block';
+}
+
+document.getElementById('replay-btn').addEventListener('click', startRound);
 
 function showMessage(text) {
   document.getElementById('message').textContent = text;
