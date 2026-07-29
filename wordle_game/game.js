@@ -85,10 +85,61 @@ function updateCurrentRow() {
   }
 }
 
-// ── Keyboard (stub — filled in Task 5) ───────────────────────────────────────
+// ── Keyboard ──────────────────────────────────────────────────────────────────
 
-function renderKeyboard() {}
-function updateKeyColors() {}
+function renderKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  AZERTY.forEach(rowKeys => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'keyboard-row';
+    rowKeys.forEach(k => {
+      const btn = document.createElement('button');
+      const isWide = k === 'ENTRÉE' || k === '⌫';
+      btn.className = 'key' + (isWide ? ' wide' : '');
+      btn.textContent = k;
+      btn.dataset.key = k;
+      btn.addEventListener('click', () => handleKey(k));
+      rowEl.appendChild(btn);
+    });
+    kb.appendChild(rowEl);
+  });
+}
+
+function updateKeyColors() {
+  document.querySelectorAll('.key').forEach(btn => {
+    const k = btn.dataset.key;
+    if (!keyColors[k]) return;
+    const isWide = k === 'ENTRÉE' || k === '⌫';
+    btn.className = 'key' + (isWide ? ' wide' : '') + ' ' + keyColors[k];
+  });
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Enter') handleKey('ENTRÉE');
+  else if (e.key === 'Backspace') handleKey('⌫');
+  else if (/^[a-zA-ZÀ-ÿ]$/.test(e.key)) handleKey(e.key.toUpperCase());
+});
+
+function handleKey(key) {
+  if (gameOver) return;
+  if (key === '⌫') {
+    currentGuess = currentGuess.slice(0, -1);
+    updateCurrentRow();
+  } else if (key === 'ENTRÉE') {
+    submitGuess();
+  } else if (currentGuess.length < target.length) {
+    currentGuess += key;
+    updateCurrentRow();
+  }
+}
+
+// ── Guess logic (stub — filled in Task 6) ────────────────────────────────────
+
+function submitGuess() {}
 
 // ── Round end (stub — filled in Task 7) ──────────────────────────────────────
 
