@@ -43,6 +43,7 @@ Deployed as a static site on GitHub Pages. No build step required. Local testing
 - **Green** — correct letter, correct position
 - **Yellow** — correct letter, wrong position
 - **Grey** — letter not in word
+- Duplicate letter rule: greens are resolved first, then yellows consume remaining unmatched target letters left-to-right. Extra copies of a letter beyond the target count are grey.
 - Tile flip animation on submission
 - On-screen keyboard keys update to reflect best hint per letter (green > yellow > grey)
 
