@@ -137,11 +137,93 @@ function handleKey(key) {
   }
 }
 
-// ── Guess logic (stub — filled in Task 6) ────────────────────────────────────
+// ── Guess logic ───────────────────────────────────────────────────────────────
 
-function submitGuess() {}
+function submitGuess() {
+  if (currentGuess.length < target.length) {
+    shakeRow(currentRow);
+    return;
+  }
+  if (!validGuesses.has(currentGuess)) {
+    shakeRow(currentRow);
+    showMessage('Mot non reconnu');
+    setTimeout(() => showMessage(''), 1500);
+    return;
+  }
+  showMessage('');
+  const feedback = computeFeedback(currentGuess, target);
+  revealRow(currentRow, currentGuess, feedback, () => {
+    updateKeyboardColors(currentGuess, feedback);
+    const won = feedback.every(f => f === 'green');
+    if (won) {
+      endGame(true);
+    } else if (currentRow === MAX_GUESSES - 1) {
+      endGame(false);
+    } else {
+      currentRow++;
+      currentGuess = '';
+    }
+  });
+}
+
+function computeFeedback(guess, target) {
+  const result = Array(guess.length).fill('grey');
+  const targetLetters = target.split('');
+  const guessLetters = guess.split('');
+  for (let i = 0; i < guess.length; i++) {
+    if (guessLetters[i] === targetLetters[i]) {
+      result[i] = 'green';
+      targetLetters[i] = null;
+      guessLetters[i] = null;
+    }
+  }
+  for (let i = 0; i < guess.length; i++) {
+    if (guessLetters[i] === null) continue;
+    const j = targetLetters.indexOf(guessLetters[i]);
+    if (j !== -1) {
+      result[i] = 'yellow';
+      targetLetters[j] = null;
+    }
+  }
+  return result;
+}
+
+function revealRow(rowIndex, guess, feedback, onDone) {
+  feedback.forEach((color, i) => {
+    const tile = getTile(rowIndex, i);
+    setTimeout(() => {
+      tile.classList.add('flip');
+      setTimeout(() => {
+        tile.classList.remove('flip');
+        tile.className = `tile ${color}`;
+        tile.textContent = guess[i];
+      }, FLIP_DURATION / 2);
+    }, i * FLIP_DELAY);
+  });
+  setTimeout(onDone, feedback.length * FLIP_DELAY + FLIP_DURATION);
+}
+
+function updateKeyboardColors(guess, feedback) {
+  const priority = { green: 3, yellow: 2, grey: 1 };
+  for (let i = 0; i < guess.length; i++) {
+    const letter = guess[i];
+    const color = feedback[i];
+    if (!keyColors[letter] || priority[color] > priority[keyColors[letter]]) {
+      keyColors[letter] = color;
+    }
+  }
+  updateKeyColors();
+}
+
+function shakeRow(rowIndex) {
+  const row = document.getElementById(`row-${rowIndex}`);
+  row.classList.add('shake');
+  row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
+}
 
 // ── Round end (stub — filled in Task 7) ──────────────────────────────────────
+
+function endGame(won) {}
 
 function showMessage(text) {
   document.getElementById('message').textContent = text;
