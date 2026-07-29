@@ -15,6 +15,7 @@ let currentGuess = '';
 let currentRow = 0;
 let gameOver = false;
 let keyColors = {};
+let messageTimeoutId = null;
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
@@ -147,9 +148,11 @@ function submitGuess() {
   if (!validGuesses.has(currentGuess)) {
     shakeRow(currentRow);
     showMessage('Mot non reconnu');
-    setTimeout(() => showMessage(''), 1500);
+    clearTimeout(messageTimeoutId);
+    messageTimeoutId = setTimeout(() => showMessage(''), 1500);
     return;
   }
+  clearTimeout(messageTimeoutId);
   showMessage('');
   const feedback = computeFeedback(currentGuess, target);
   revealRow(currentRow, currentGuess, feedback, () => {
