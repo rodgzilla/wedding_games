@@ -33,7 +33,9 @@ async function init() {
     .map(w => w.trim().toUpperCase())
     .filter(w => w.length > 0);
 
-  validGuesses = new Set([...dictWords, ...words]);
+  const stripped = dictWords.map(w => w.normalize('NFD').replace(/[̀-ͯ]/g, ''));
+
+  validGuesses = new Set([...dictWords, ...stripped, ...words]);
 
   startRound();
 }
