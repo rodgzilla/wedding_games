@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceTimes, formatTime } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceTimes, formatTime, buildResultMessage } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -67,4 +67,80 @@ test('formatTime formats seconds as MmSS', () => {
   assert.strictEqual(formatTime(5), '0mn05');
   assert.strictEqual(formatTime(60), '1mn00');
   assert.strictEqual(formatTime(725), '12mn05');
+});
+
+test('buildResultMessage: win with no reference data', () => {
+  const msg = buildResultMessage({ won: true, elapsedSeconds: 168, target: 'AMOUR', reference: undefined });
+  assert.strictEqual(msg, 'Tu as deviné le mot en 2mn48 !');
+});
+
+test('buildResultMessage: win, faster than Clarisse', () => {
+  const msg = buildResultMessage({
+    won: true, elapsedSeconds: 100, target: 'AMOUR',
+    reference: { name: 'CLARISSE', seconds: 168 },
+  });
+  assert.strictEqual(
+    msg,
+    "Tu as deviné le mot en 1mn40 ! Clarisse l'a deviné en 2mn48, tu étais plus rapide qu'elle, félicitations !"
+  );
+});
+
+test('buildResultMessage: win, faster than David', () => {
+  const msg = buildResultMessage({
+    won: true, elapsedSeconds: 100, target: 'AMOUR',
+    reference: { name: 'DAVID', seconds: 168 },
+  });
+  assert.strictEqual(
+    msg,
+    "Tu as deviné le mot en 1mn40 ! David l'a deviné en 2mn48, tu étais plus rapide que lui, félicitations !"
+  );
+});
+
+test('buildResultMessage: win, slower than Clarisse', () => {
+  const msg = buildResultMessage({
+    won: true, elapsedSeconds: 200, target: 'AMOUR',
+    reference: { name: 'CLARISSE', seconds: 168 },
+  });
+  assert.strictEqual(
+    msg,
+    "Tu as deviné le mot en 3mn20 ! Clarisse l'a deviné en 2mn48, elle était plus rapide que toi !"
+  );
+});
+
+test('buildResultMessage: win, slower than David', () => {
+  const msg = buildResultMessage({
+    won: true, elapsedSeconds: 200, target: 'AMOUR',
+    reference: { name: 'DAVID', seconds: 168 },
+  });
+  assert.strictEqual(
+    msg,
+    "Tu as deviné le mot en 3mn20 ! David l'a deviné en 2mn48, il était plus rapide que toi !"
+  );
+});
+
+test('buildResultMessage: win, tie', () => {
+  const msg = buildResultMessage({
+    won: true, elapsedSeconds: 168, target: 'AMOUR',
+    reference: { name: 'DAVID', seconds: 168 },
+  });
+  assert.strictEqual(
+    msg,
+    "Tu as deviné le mot en 2mn48 ! David l'a deviné exactement dans le même temps !"
+  );
+});
+
+test('buildResultMessage: loss with no reference data', () => {
+  const msg = buildResultMessage({ won: false, elapsedSeconds: 300, target: 'AMOUR', reference: undefined });
+  assert.strictEqual(msg, "Le mot était : AMOUR. Tu as mis 5mn00 avant d'être à court d'essais.");
+});
+
+test('buildResultMessage: loss with reference data', () => {
+  const msg = buildResultMessage({
+    won: false, elapsedSeconds: 300, target: 'AMOUR',
+    reference: { name: 'CLARISSE', seconds: 168 },
+  });
+  assert.strictEqual(
+    msg,
+    "Le mot était : AMOUR. Tu as mis 5mn00 avant d'être à court d'essais. Clarisse l'a deviné en 2mn48."
+  );
 });

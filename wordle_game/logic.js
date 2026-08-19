@@ -57,3 +57,41 @@ export function formatTime(seconds) {
   const remainingSeconds = seconds % 60;
   return `${minutes}mn${String(remainingSeconds).padStart(2, '0')}`;
 }
+
+const DISPLAY_NAME = { CLARISSE: 'Clarisse', DAVID: 'David' };
+const FASTER_THAN_PHRASE = {
+  CLARISSE: "tu étais plus rapide qu'elle",
+  DAVID: 'tu étais plus rapide que lui',
+};
+const SLOWER_THAN_PHRASE = {
+  CLARISSE: 'elle était plus rapide que toi',
+  DAVID: 'il était plus rapide que toi',
+};
+
+export function buildResultMessage({ won, elapsedSeconds, target, reference }) {
+  const time = formatTime(elapsedSeconds);
+
+  if (won) {
+    let message = `Tu as deviné le mot en ${time} !`;
+    if (reference) {
+      const name = DISPLAY_NAME[reference.name];
+      const refTime = formatTime(reference.seconds);
+      if (elapsedSeconds < reference.seconds) {
+        message += ` ${name} l'a deviné en ${refTime}, ${FASTER_THAN_PHRASE[reference.name]}, félicitations !`;
+      } else if (elapsedSeconds > reference.seconds) {
+        message += ` ${name} l'a deviné en ${refTime}, ${SLOWER_THAN_PHRASE[reference.name]} !`;
+      } else {
+        message += ` ${name} l'a deviné exactement dans le même temps !`;
+      }
+    }
+    return message;
+  }
+
+  let message = `Le mot était : ${target}. Tu as mis ${time} avant d'être à court d'essais.`;
+  if (reference) {
+    const name = DISPLAY_NAME[reference.name];
+    const refTime = formatTime(reference.seconds);
+    message += ` ${name} l'a deviné en ${refTime}.`;
+  }
+  return message;
+}
