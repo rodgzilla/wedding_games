@@ -32,3 +32,7 @@ export function parseSublists(text) {
     .map(parseWordList)
     .filter(group => group.length > 0);
 }
+
+export function pickRandomSublist(sublists, randomFn = Math.random) {
+  return sublists[Math.floor(randomFn() * sublists.length)];
+}

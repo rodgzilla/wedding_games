@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback, parseWordList, parseSublists } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -37,4 +37,11 @@ test('parseSublists ignores multiple blank lines and leading/trailing blank line
     ['AMOUR', 'VOILE'],
     ['FLEUR', 'UNION'],
   ]);
+});
+
+test('pickRandomSublist selects based on the injected random function', () => {
+  const sublists = [['A'], ['B'], ['C']];
+  assert.deepStrictEqual(pickRandomSublist(sublists, () => 0), ['A']);
+  assert.deepStrictEqual(pickRandomSublist(sublists, () => 0.5), ['B']);
+  assert.deepStrictEqual(pickRandomSublist(sublists, () => 0.99), ['C']);
 });
