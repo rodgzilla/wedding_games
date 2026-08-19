@@ -48,18 +48,18 @@ Everything lives in `wordle_game/`:
 
 1. **init()** fetches `words.txt`, `dictionary.txt`, and `reference_times.txt` in parallel. Parses sublists from `words.txt` (blank-line-separated groups) and picks one at random via `pickRandomSublist()`. Parses reference times via `parseReferenceTimes()`. Guess validity is the union of `dictionary.txt`, an accent-stripped copy of it (`normalize('NFD')` + diacritic strip), and all words from all sublists — so every answer word is always guessable even if absent from the Lexique corpus.
 
-2. **startWord()** (first call per page load, then via "Mot suivant" button) sets the target word from the current sublist and resets per-word state (`currentGuess`, `currentRow`, `gameOver`, `keyColors`). Re-renders the grid (5 columns × `MAX_GUESSES` rows) and the AZERTY keyboard. Resets the timer (`timerStart = null`, `elapsedSeconds = 0`).
+2. **startRound()** (first call per page load, then via "Mot suivant" button) sets the target word from the current sublist and resets per-word state (`currentGuess`, `currentRow`, `gameOver`, `keyColors`). Re-renders the grid (5 columns × `MAX_GUESSES` rows) and the AZERTY keyboard. Resets the timer (`timerStart = null`, `elapsedSeconds = 0`).
 
 3. **Input** comes from either the on-screen AZERTY keyboard or the physical keyboard (`keydown` listener, regex `[a-zA-ZÀ-ÿ]` for accented letters); both funnel through `handleKey()`.
 
-4. **submitGuess()** validates guess length, then membership in `validGuesses`; rejects animate a shake (`shakeRow`) plus a transient "Mot non reconnu" message (timeout tracked in `messageTimeoutId`). On first valid guess, **starts the per-word timer** (`timerStart = Date.now()`, then update `elapsedSeconds` every 100ms via `setInterval()`).
+4. **submitGuess()** validates guess length, then membership in `validGuesses`; rejects animate a shake (`shakeRow`) plus a transient "Mot non reconnu" message (timeout tracked in `messageTimeoutId`). On first valid guess, **starts the per-word timer** (`timerStart = Date.now()`); the visible clock then ticks once per second via `updateTimerDisplay()` called on a 1000ms interval. When a guess ends the word (win or loss), `stopTimer()` freezes `elapsedSeconds` exactly once, by computing `Math.floor((Date.now() - timerStart) / 1000)`.
 
 5. **computeFeedback(guess, target)** (unit-tested in `logic.test.js`) implements standard Wordle two-pass duplicate-letter resolution: exact-position matches consume target letters first (green), then remaining guess letters consume leftover target letters left-to-right (yellow); anything unconsumed is grey.
 
-6. **revealRow()** staggers the flip animation per tile (`FLIP_DELAY` between tiles, `FLIP_DURATION` per flip) and calls back into `updateKeyboardColors()` → win/loss check → `endWord()` or advance to the next row.
+6. **revealRow()** staggers the flip animation per tile (`FLIP_DELAY` between tiles, `FLIP_DURATION` per flip) and calls back into `updateKeyboardColors()` → win/loss check → `endGame()` or advance to the next row.
 
 7. On-screen keyboard key colors track the best hint seen per letter across guesses (green > yellow > grey priority), via `keyColors`.
 
-8. **endWord(won)** stops the timer (freezes `elapsedSeconds`), builds the result message via `buildResultMessage({ won, elapsedSeconds, target, reference })` (with optional Clarisse/David comparison), and shows either a "Mot suivant" button (to advance to the next word in the sublist) or a "Voir le récap" button (after the 6th word, to jump to the recap screen).
+8. **endGame(won)** stops the timer (freezes `elapsedSeconds`), builds the result message via `buildResultMessage({ won, elapsedSeconds, target, reference })` (with optional Clarisse/David comparison), and shows either a "Mot suivant" button (to advance to the next word in the sublist) or a "Voir le récap" button (after the 6th word, to jump to the recap screen).
 
-9. **Recap screen** displays all 6 words played and their results (win/loss + message for each) after the final word.
+9. **Recap screen** displays all 6 words played with their results (word, win/loss label, and elapsed time) after the final word.
