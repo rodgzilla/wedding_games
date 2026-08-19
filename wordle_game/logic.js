@@ -19,3 +19,9 @@ export function computeFeedback(guess, target) {
   }
   return result;
 }
+
+export function parseWordList(text) {
+  return text.split('\n')
+    .map(w => w.trim().toUpperCase())
+    .filter(w => w.length > 0);
+}

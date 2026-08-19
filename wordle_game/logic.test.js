@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback } from './logic.js';
+import { computeFeedback, parseWordList } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -16,4 +16,9 @@ test('computeFeedback: green matches take priority over duplicate-letter yellows
 
 test('computeFeedback: yellow and green can both appear for a repeated letter', () => {
   assert.deepStrictEqual(computeFeedback('AABBB', 'BAAAA'), ['yellow', 'green', 'yellow', 'grey', 'grey']);
+});
+
+test('parseWordList trims, uppercases, and drops blank lines', () => {
+  const text = ' amour \n\nvoile \n  \nfleur\n';
+  assert.deepStrictEqual(parseWordList(text), ['AMOUR', 'VOILE', 'FLEUR']);
 });
