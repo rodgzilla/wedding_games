@@ -112,7 +112,7 @@
     .key.yellow { background: #c9b458; color: #fff; }
     .key.grey   { background: #787c7e; color: #fff; }
 
-    #replay-btn {
+    #next-btn {
       display: none;
       padding: 12px 28px;
       font-size: 1rem;
@@ -124,14 +124,33 @@
       cursor: pointer;
     }
 
-    #replay-btn:hover { background: #538d4e; }
+    #next-btn:hover { background: #538d4e; }
+
+    #recap {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      max-width: 400px;
+      padding: 0 8px;
+    }
+
+    .recap-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: #f4f4f4;
+      font-size: 0.95rem;
+    }
   </style>
 </head>
 <body>
   <div id="message"></div>
   <div id="grid"></div>
   <div id="keyboard"></div>
-  <button id="replay-btn">Rejouer</button>
+  <button id="next-btn">Mot suivant</button>
+  <div id="recap"></div>
   <script type="module" src="game.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import { computeFeedback } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist } from './logic.js';
 
 const MAX_GUESSES = 6;
 const FLIP_DURATION = 350;
@@ -18,6 +18,9 @@ let currentRow = 0;
 let gameOver = false;
 let keyColors = {};
 let messageTimeoutId = null;
+let sublist = [];
+let wordIndex = 0;
+let results = [];
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
@@ -27,35 +30,32 @@ async function init() {
     fetch('dictionary.txt').then(r => r.text()),
   ]);
 
-  words = wordsText.split('\n')
-    .map(w => w.trim().toUpperCase())
-    .filter(w => w.length > 0);
+  const sublists = parseSublists(wordsText);
+  sublist = pickRandomSublist(sublists);
+  words = sublists.flat();
 
-  const dictWords = dictText.split('\n')
-    .map(w => w.trim().toUpperCase())
-    .filter(w => w.length > 0);
-
+  const dictWords = parseWordList(dictText);
   const stripped = dictWords.map(w => w.normalize('NFD').replace(/[̀-ͯ]/g, ''));
-
   validGuesses = new Set([...dictWords, ...stripped, ...words]);
 
+  wordIndex = 0;
+  results = [];
   startRound();
 }
 
 function startRound() {
-  target = pickRandomWord();
+  target = sublist[wordIndex];
   currentGuess = '';
   currentRow = 0;
   gameOver = false;
   keyColors = {};
   showMessage('');
-  document.getElementById('replay-btn').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('recap').style.display = 'none';
+  document.getElementById('grid').style.display = 'flex';
+  document.getElementById('keyboard').style.display = 'flex';
   renderGrid();
   renderKeyboard();
-}
-
-function pickRandomWord() {
-  return words[Math.floor(Math.random() * words.length)];
 }
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
@@ -211,11 +211,38 @@ function shakeRow(rowIndex) {
 
 function endGame(won) {
   gameOver = true;
+  results.push({ word: target, won });
   showMessage(won ? 'Bravo !' : `Le mot était : ${target}`);
-  document.getElementById('replay-btn').style.display = 'inline-block';
+  const isLastWord = wordIndex === sublist.length - 1;
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.textContent = isLastWord ? 'Voir le récap' : 'Mot suivant';
+  nextBtn.style.display = 'inline-block';
 }
 
-document.getElementById('replay-btn').addEventListener('click', startRound);
+document.getElementById('next-btn').addEventListener('click', () => {
+  if (wordIndex === sublist.length - 1) {
+    showRecap();
+  } else {
+    wordIndex++;
+    startRound();
+  }
+});
+
+function showRecap() {
+  document.getElementById('grid').style.display = 'none';
+  document.getElementById('keyboard').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'none';
+  showMessage('');
+  const recap = document.getElementById('recap');
+  recap.innerHTML = '';
+  results.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'recap-row';
+    row.textContent = `${r.word} — ${r.won ? 'réussi' : 'échoué'}`;
+    recap.appendChild(row);
+  });
+  recap.style.display = 'flex';
+}
 
 function showMessage(text) {
   document.getElementById('message').textContent = text;
