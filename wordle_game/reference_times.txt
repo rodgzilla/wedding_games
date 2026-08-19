@@ -1,3 +1,5 @@
+# PLACEHOLDER VALUES — replace with real stopwatch times before the wedding.
+# Format: WORD,NAME,SECONDS  (NAME is CLARISSE or DAVID, one per word)
 AMOUR,CLARISSE,95
 SELKI,DAVID,142
 VOILE,CLARISSE,63

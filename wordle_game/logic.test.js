@@ -61,6 +61,22 @@ test('parseReferenceTimes skips blank lines and trims/uppercases fields', () => 
   assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', seconds: 168 });
 });
 
+test('parseReferenceTimes skips lines with an unrecognized name value', () => {
+  const text = 'AMOUR,CLARRISE,168\nNOCES,DAVID,95\n';
+  const result = parseReferenceTimes(text);
+  assert.strictEqual(result.size, 1);
+  assert.strictEqual(result.has('AMOUR'), false);
+  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', seconds: 95 });
+});
+
+test('parseReferenceTimes skips lines with an empty seconds field', () => {
+  const text = 'AMOUR,CLARISSE,\nNOCES,DAVID,95\n';
+  const result = parseReferenceTimes(text);
+  assert.strictEqual(result.size, 1);
+  assert.strictEqual(result.has('AMOUR'), false);
+  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', seconds: 95 });
+});
+
 test('formatTime formats seconds as MmSS', () => {
   assert.strictEqual(formatTime(168), '2mn48');
   assert.strictEqual(formatTime(0), '0mn00');

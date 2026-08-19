@@ -204,6 +204,7 @@ function submitGuess() {
   const won = feedback.every(f => f === 'green');
   if (won || currentRow === MAX_GUESSES - 1) {
     stopTimer();
+    gameOver = true;
   }
   revealRow(currentRow, currentGuess, feedback, () => {
     updateKeyboardColors(currentGuess, feedback);
@@ -279,6 +280,7 @@ function showRecap() {
   document.getElementById('keyboard').style.display = 'none';
   document.getElementById('next-btn').style.display = 'none';
   showMessage('');
+  document.getElementById('timer').textContent = '';
   const recap = document.getElementById('recap');
   recap.innerHTML = '';
   results.forEach(r => {

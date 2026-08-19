@@ -45,9 +45,11 @@ export function parseReferenceTimes(text) {
     const parts = trimmed.split(',').map(p => p.trim());
     if (parts.length !== 3) continue;
     const [word, name, secondsStr] = parts;
+    const upperName = name.toUpperCase();
+    if (upperName !== 'CLARISSE' && upperName !== 'DAVID') continue;
     const seconds = Number(secondsStr);
-    if (!word || !name || !Number.isFinite(seconds)) continue;
-    map.set(word.toUpperCase(), { name: name.toUpperCase(), seconds });
+    if (!word || secondsStr.length === 0 || !Number.isFinite(seconds) || seconds < 0) continue;
+    map.set(word.toUpperCase(), { name: upperName, seconds });
   }
   return map;
 }
