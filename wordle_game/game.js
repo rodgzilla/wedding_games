@@ -1,4 +1,12 @@
-import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, formatTime } from './logic.js';
+import {
+  computeFeedback,
+  parseWordList,
+  parseSublists,
+  pickRandomSublist,
+  formatTime,
+  parseReferenceTimes,
+  buildResultMessage,
+} from './logic.js';
 
 const MAX_GUESSES = 6;
 const FLIP_DURATION = 350;
@@ -24,13 +32,15 @@ let results = [];
 let timerStart = null;
 let timerIntervalId = null;
 let elapsedSeconds = 0;
+let referenceTimes = new Map();
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [wordsText, dictText] = await Promise.all([
+  const [wordsText, dictText, refTimesText] = await Promise.all([
     fetch('words.txt').then(r => r.text()),
     fetch('dictionary.txt').then(r => r.text()),
+    fetch('reference_times.txt').then(r => r.text()),
   ]);
 
   const sublists = parseSublists(wordsText);
@@ -40,6 +50,7 @@ async function init() {
   const dictWords = parseWordList(dictText);
   const stripped = dictWords.map(w => w.normalize('NFD').replace(/[̀-ͯ]/g, ''));
   validGuesses = new Set([...dictWords, ...stripped, ...words]);
+  referenceTimes = parseReferenceTimes(refTimesText);
 
   wordIndex = 0;
   results = [];
@@ -246,7 +257,8 @@ function shakeRow(rowIndex) {
 function endGame(won) {
   gameOver = true;
   results.push({ word: target, won, elapsedSeconds });
-  showMessage(won ? 'Bravo !' : `Le mot était : ${target}`);
+  const reference = referenceTimes.get(target);
+  showMessage(buildResultMessage({ won, elapsedSeconds, target, reference }));
   const isLastWord = wordIndex === sublist.length - 1;
   const nextBtn = document.getElementById('next-btn');
   nextBtn.textContent = isLastWord ? 'Voir le récap' : 'Mot suivant';
