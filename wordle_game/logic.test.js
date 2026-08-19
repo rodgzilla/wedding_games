@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceTimes } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceTimes, formatTime } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -59,4 +59,12 @@ test('parseReferenceTimes skips blank lines and trims/uppercases fields', () => 
   const result = parseReferenceTimes(text);
   assert.strictEqual(result.size, 1);
   assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', seconds: 168 });
+});
+
+test('formatTime formats seconds as MmSS', () => {
+  assert.strictEqual(formatTime(168), '2mn48');
+  assert.strictEqual(formatTime(0), '0mn00');
+  assert.strictEqual(formatTime(5), '0mn05');
+  assert.strictEqual(formatTime(60), '1mn00');
+  assert.strictEqual(formatTime(725), '12mn05');
 });

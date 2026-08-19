@@ -51,3 +51,9 @@ export function parseReferenceTimes(text) {
   }
   return map;
 }
+
+export function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}mn${String(remainingSeconds).padStart(2, '0')}`;
+}
