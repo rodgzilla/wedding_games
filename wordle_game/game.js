@@ -1,4 +1,4 @@
-import { computeFeedback, parseWordList, parseSublists, pickRandomSublist } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, formatTime } from './logic.js';
 
 const MAX_GUESSES = 6;
 const FLIP_DURATION = 350;
@@ -21,6 +21,9 @@ let messageTimeoutId = null;
 let sublist = [];
 let wordIndex = 0;
 let results = [];
+let timerStart = null;
+let timerIntervalId = null;
+let elapsedSeconds = 0;
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
@@ -49,6 +52,13 @@ function startRound() {
   currentRow = 0;
   gameOver = false;
   keyColors = {};
+  if (timerIntervalId !== null) {
+    clearInterval(timerIntervalId);
+    timerIntervalId = null;
+  }
+  timerStart = null;
+  elapsedSeconds = 0;
+  document.getElementById('timer').textContent = '';
   showMessage('');
   document.getElementById('next-btn').style.display = 'none';
   document.getElementById('recap').style.display = 'none';
@@ -144,6 +154,24 @@ function handleKey(key) {
 
 // ── Guess logic ───────────────────────────────────────────────────────────────
 
+function startTimer() {
+  timerStart = Date.now();
+  timerIntervalId = setInterval(updateTimerDisplay, 1000);
+  updateTimerDisplay();
+}
+
+function stopTimer() {
+  clearInterval(timerIntervalId);
+  timerIntervalId = null;
+  elapsedSeconds = Math.floor((Date.now() - timerStart) / 1000);
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const seconds = timerStart === null ? 0 : Math.floor((Date.now() - timerStart) / 1000);
+  document.getElementById('timer').textContent = formatTime(seconds);
+}
+
 function submitGuess() {
   if (currentGuess.length < target.length) {
     shakeRow(currentRow);
@@ -156,12 +184,18 @@ function submitGuess() {
     messageTimeoutId = setTimeout(() => showMessage(''), 1500);
     return;
   }
+  if (timerStart === null) {
+    startTimer();
+  }
   clearTimeout(messageTimeoutId);
   showMessage('');
   const feedback = computeFeedback(currentGuess, target);
+  const won = feedback.every(f => f === 'green');
+  if (won || currentRow === MAX_GUESSES - 1) {
+    stopTimer();
+  }
   revealRow(currentRow, currentGuess, feedback, () => {
     updateKeyboardColors(currentGuess, feedback);
-    const won = feedback.every(f => f === 'green');
     if (won) {
       endGame(true);
     } else if (currentRow === MAX_GUESSES - 1) {
@@ -211,7 +245,7 @@ function shakeRow(rowIndex) {
 
 function endGame(won) {
   gameOver = true;
-  results.push({ word: target, won });
+  results.push({ word: target, won, elapsedSeconds });
   showMessage(won ? 'Bravo !' : `Le mot était : ${target}`);
   const isLastWord = wordIndex === sublist.length - 1;
   const nextBtn = document.getElementById('next-btn');
@@ -238,7 +272,7 @@ function showRecap() {
   results.forEach(r => {
     const row = document.createElement('div');
     row.className = 'recap-row';
-    row.textContent = `${r.word} — ${r.won ? 'réussi' : 'échoué'}`;
+    row.textContent = `${r.word} — ${r.won ? 'réussi' : 'échoué'} — ${formatTime(r.elapsedSeconds)}`;
     recap.appendChild(row);
   });
   recap.style.display = 'flex';
