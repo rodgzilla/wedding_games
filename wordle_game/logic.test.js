@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback, parseWordList } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -21,4 +21,20 @@ test('computeFeedback: yellow and green can both appear for a repeated letter', 
 test('parseWordList trims, uppercases, and drops blank lines', () => {
   const text = ' amour \n\nvoile \n  \nfleur\n';
   assert.deepStrictEqual(parseWordList(text), ['AMOUR', 'VOILE', 'FLEUR']);
+});
+
+test('parseSublists groups words into blank-line-separated sublists', () => {
+  const text = 'amour\nvoile\nfleur\nunion\nbague\nnoces\n\nepoux\nvoeux\nchoux\ndanse\nouiii\nbiere\n';
+  assert.deepStrictEqual(parseSublists(text), [
+    ['AMOUR', 'VOILE', 'FLEUR', 'UNION', 'BAGUE', 'NOCES'],
+    ['EPOUX', 'VOEUX', 'CHOUX', 'DANSE', 'OUIII', 'BIERE'],
+  ]);
+});
+
+test('parseSublists ignores multiple blank lines and leading/trailing blank lines', () => {
+  const text = '\n\nAMOUR\nVOILE\n\n\n\nFLEUR\nUNION\n\n';
+  assert.deepStrictEqual(parseSublists(text), [
+    ['AMOUR', 'VOILE'],
+    ['FLEUR', 'UNION'],
+  ]);
 });

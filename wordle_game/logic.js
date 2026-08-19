@@ -25,3 +25,10 @@ export function parseWordList(text) {
     .map(w => w.trim().toUpperCase())
     .filter(w => w.length > 0);
 }
+
+export function parseSublists(text) {
+  return text
+    .split(/\n\s*\n/)
+    .map(parseWordList)
+    .filter(group => group.length > 0);
+}
