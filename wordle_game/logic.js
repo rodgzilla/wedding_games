@@ -36,3 +36,18 @@ export function parseSublists(text) {
 export function pickRandomSublist(sublists, randomFn = Math.random) {
   return sublists[Math.floor(randomFn() * sublists.length)];
 }
+
+export function parseReferenceTimes(text) {
+  const map = new Map();
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split(',').map(p => p.trim());
+    if (parts.length !== 3) continue;
+    const [word, name, secondsStr] = parts;
+    const seconds = Number(secondsStr);
+    if (!word || !name || !Number.isFinite(seconds)) continue;
+    map.set(word.toUpperCase(), { name: name.toUpperCase(), seconds });
+  }
+  return map;
+}

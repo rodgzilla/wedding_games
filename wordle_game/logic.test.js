@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback, parseWordList, parseSublists, pickRandomSublist } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceTimes } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -44,4 +44,19 @@ test('pickRandomSublist selects based on the injected random function', () => {
   assert.deepStrictEqual(pickRandomSublist(sublists, () => 0), ['A']);
   assert.deepStrictEqual(pickRandomSublist(sublists, () => 0.5), ['B']);
   assert.deepStrictEqual(pickRandomSublist(sublists, () => 0.99), ['C']);
+});
+
+test('parseReferenceTimes parses word/name/seconds lines into a Map', () => {
+  const text = 'AMOUR,CLARISSE,168\nNOCES,DAVID,95\n';
+  const result = parseReferenceTimes(text);
+  assert.strictEqual(result.size, 2);
+  assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', seconds: 168 });
+  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', seconds: 95 });
+});
+
+test('parseReferenceTimes skips blank lines and trims/uppercases fields', () => {
+  const text = '\n  amour , clarisse , 168 \n\n';
+  const result = parseReferenceTimes(text);
+  assert.strictEqual(result.size, 1);
+  assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', seconds: 168 });
 });
