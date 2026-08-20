@@ -73,6 +73,7 @@ function startRound() {
   showMessage('');
   document.getElementById('next-btn').style.display = 'none';
   document.getElementById('recap').style.display = 'none';
+  document.getElementById('legend').style.display = 'flex';
   document.getElementById('grid').style.display = 'flex';
   document.getElementById('keyboard').style.display = 'flex';
   renderGrid();
@@ -278,18 +279,23 @@ document.getElementById('next-btn').addEventListener('click', () => {
 function showRecap() {
   document.getElementById('grid').style.display = 'none';
   document.getElementById('keyboard').style.display = 'none';
+  document.getElementById('legend').style.display = 'none';
   document.getElementById('next-btn').style.display = 'none';
   showMessage('');
   document.getElementById('timer').textContent = '';
-  const recap = document.getElementById('recap');
-  recap.innerHTML = '';
+  const recapResults = document.getElementById('recap-results');
+  recapResults.innerHTML = '';
   results.forEach(r => {
     const row = document.createElement('div');
     row.className = 'recap-row';
-    row.textContent = `${r.word} — ${r.won ? 'réussi' : 'échoué'} — ${formatTime(r.elapsedSeconds)}`;
-    recap.appendChild(row);
+    row.innerHTML = `
+      <span class="recap-status">${r.won ? '✅' : '❌'}</span>
+      <span class="recap-word">${r.word}</span>
+      <span class="recap-time">${formatTime(r.elapsedSeconds)}</span>
+    `;
+    recapResults.appendChild(row);
   });
-  recap.style.display = 'flex';
+  document.getElementById('recap').style.display = 'flex';
 }
 
 function showMessage(text) {

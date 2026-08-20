@@ -33,6 +33,34 @@
       color: #333;
     }
 
+    #legend {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+      max-width: 420px;
+      padding: 0 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: #333;
+    }
+
+    .legend-tile {
+      width: 22px;
+      height: 22px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .legend-tile.green  { background: #6aaa64; }
+    .legend-tile.yellow { background: #c9b458; }
+    .legend-tile.grey   { background: #787c7e; }
+
     #grid {
       display: flex;
       flex-direction: column;
@@ -136,29 +164,85 @@
     #recap {
       display: none;
       flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 480px;
+      padding: 0 8px 32px;
+      text-align: center;
+    }
+
+    #recap h2 {
+      font-size: 1.4rem;
+      color: #333;
+    }
+
+    #recap-photo {
+      width: min(90vw, 480px);
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    #recap-caption {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #538d4e;
+    }
+
+    #recap-results {
+      display: flex;
+      flex-direction: column;
       gap: 8px;
       width: 100%;
-      max-width: 400px;
-      padding: 0 8px;
     }
 
     .recap-row {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
-      border-radius: 4px;
+      padding: 10px 14px;
+      border-radius: 8px;
       background: #f4f4f4;
       font-size: 0.95rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .recap-row .recap-status {
+      font-size: 1.1rem;
+      margin-right: 8px;
+    }
+
+    .recap-row .recap-word {
+      flex: 1;
+      text-align: left;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .recap-row .recap-time {
+      color: #666;
     }
   </style>
 </head>
 <body>
   <div id="message"></div>
   <div id="timer"></div>
+  <div id="legend">
+    <div class="legend-item"><span class="legend-tile green"></span>Bonne lettre, bonne place</div>
+    <div class="legend-item"><span class="legend-tile yellow"></span>Bonne lettre, mauvaise place</div>
+    <div class="legend-item"><span class="legend-tile grey"></span>Lettre absente du mot</div>
+  </div>
   <div id="grid"></div>
   <div id="keyboard"></div>
   <button id="next-btn">Mot suivant</button>
-  <div id="recap"></div>
+  <div id="recap">
+    <h2>Bravo, tu as fini !</h2>
+    <img id="recap-photo" src="selki.jpg" alt="Selki, le chien des mariés">
+    <div id="recap-caption">Félicitations ! Tu as gagné une photo de Selki !</div>
+    <div id="recap-results"></div>
+  </div>
   <script type="module" src="game.js"></script>
 </body>
 </html>
