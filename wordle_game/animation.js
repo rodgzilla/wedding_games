@@ -29,7 +29,10 @@ const T_SWAY_END = 9200;
 const T_FADE_START = 9500;
 
 const BASE_ANGLE = 45 * Math.PI / 180;
-const TREE_ROTATION = Math.PI;      // the tree hangs from the top and grows down
+const TREE_ROTATION = Math.PI;      // the plume hangs off the nozzle and grows down
+const CRAFT_VIEW_W = 240;           // the craft SVG's viewBox
+const CRAFT_VIEW_H = 380;
+const NOZZLE_FROM_ANCHOR = 68 / CRAFT_VIEW_H;  // nozzle sits this far above the SVG's bottom edge
 const SWAY_MAX = 0.34;              // radians the branch angle swings during the thrash
 const SWAY_RECOIL = 0.26;           // how far the tree shrinks back at full thrash
 const FADE_IN_MS = 300;
@@ -144,8 +147,12 @@ function cornersOf(node) {
   }));
 }
 
-// Measure unit-sized trees once, then pick the base size and origin that make
-// the full-grown tree fill the viewport without clipping.
+// Measure a unit-sized tree once and pick the base size that makes the
+// full-grown plume fill the viewport. The origin is NOT fixed here — the plume
+// hangs off the rocket's nozzle and moves with it, so `paintTree` places it per
+// frame. What this returns is the tree's shape: how far it reaches sideways
+// from its root (`centerX`) and how far above the root its highest point sits
+// (`minY`), both in base-size units.
 //
 // This measures the tree at rest. A leaning tree reaches much further sideways,
 // but fitting for that would leave the resting tree at a third of its size on a
@@ -175,17 +182,14 @@ function fitTree(width, height, maxDepth) {
   // on a portrait phone would leave it hugging one edge. Letting it run a
   // little past both sides trades the outermost twigs for a plume that fills
   // the frame.
-  const topY = height * 0.02;
-  const baseSize = Math.min(
-    (width * 1.9) / (maxX - minX),
-    (height * 0.96) / (maxY - minY),
-  );
   return {
-    baseSize,
-    origin: {
-      x: width / 2 - ((minX + maxX) / 2) * baseSize,
-      y: topY - minY * baseSize,
-    },
+    baseSize: Math.min(
+      (width * 1.9) / (maxX - minX),
+      (height * 0.96) / (maxY - minY),
+    ),
+    centerX: (minX + maxX) / 2,
+    minY,
+    topY: height * 0.02,
   };
 }
 
@@ -281,6 +285,8 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
   let stars = [];
   let skyBuffer = null;
   let layout = null;
+  let craftWidth = 0;
+  let pinnedOrigin = null;
   let maxDepth = 7;
   let drawDepth = 7;
 
@@ -306,9 +312,11 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
     maxDepth = maxDepthFor(width);
     drawDepth = Math.min(drawDepth, maxDepth);
     layout = fitTree(width, height, maxDepth);
+    pinnedOrigin = null;
     stars = makeStars(width, height, width < 420 ? 60 : 110);
     skyBuffer = buildSkyBuffer(dpr);
-    craft.style.width = `${Math.min(width * 0.58, 300)}px`;
+    craftWidth = Math.min(width * 0.58, 300);
+    craft.style.width = `${craftWidth}px`;
   }
 
   function finish() {
@@ -366,16 +374,31 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
     ctx.globalAlpha = 1;
   }
 
-  function paintTree(t) {
+  // Where the root square sits this frame. It is stuck to the rocket's nozzle
+  // and rides up with it, so the plume visibly pours out of the exhaust rather
+  // than hanging from nowhere. Once the rocket climbs past the height the plume
+  // settles at, the smoke stops following and lingers where it was left.
+  function treeOrigin(base, craftPos) {
+    const settledY = layout.topY - layout.minY * base;
+    if (pinnedOrigin) return pinnedOrigin;
+    if (craftPos.nozzleY <= settledY) {
+      pinnedOrigin = { x: craftPos.nozzleX - layout.centerX * base, y: settledY };
+      return pinnedOrigin;
+    }
+    return { x: craftPos.nozzleX - layout.centerX * base, y: craftPos.nozzleY };
+  }
+
+  function paintTree(t, craftPos) {
     const growth = treeGrowth(t, maxDepth);
     if (growth <= 0) return;
 
+    const base = layout.baseSize * swayRecoil(t);
     const nodes = pythagorasNodes({
       growth,
       maxDepth: drawDepth,
       angle: swayAngleAt(t),
-      baseSize: layout.baseSize * swayRecoil(t),
-      origin: layout.origin,
+      baseSize: base,
+      origin: treeOrigin(base, craftPos),
       rotation: TREE_ROTATION,
       minSize: 1.5,
     });
@@ -476,6 +499,13 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
       `translate(${x}px, ${y}px) rotate(${tilt}rad) scale(${scale}) translate(-50%, -100%)`;
     craft.style.opacity = t >= T_EXIT_END ? '0' : '1';
 
+    // Where the exhaust actually leaves the rocket, in page coordinates: the
+    // craft is anchored by the bottom of its SVG box (the flame tip), so walk
+    // back up to the nozzle through the same scale and tilt.
+    const nozzleUp = NOZZLE_FROM_ANCHOR * craftWidth * (CRAFT_VIEW_H / CRAFT_VIEW_W) * scale;
+    const nozzleX = x + Math.sin(tilt) * nozzleUp;
+    const nozzleY = y - Math.cos(tilt) * nozzleUp;
+
     const flame = t < T_COUNTDOWN_END
       ? 0
       : t < T_LIFTOFF
@@ -485,7 +515,7 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
     if (flameEl) {
       flameEl.setAttribute('transform', `translate(120 312) scale(${1 + flame * 0.3} ${flame}) translate(-120 -312)`);
     }
-    return { x, y };
+    return { x, y, nozzleX, nozzleY };
   }
 
   function updateCountdown(t) {
@@ -556,7 +586,7 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
       spawnSmoke(craftPos.x, craftPos.y, t);
     }
     paintSmoke(t);
-    paintTree(t);
+    paintTree(t, craftPos);
 
     if (!sparked && t >= T_EXIT_END) {
       sparked = true;
