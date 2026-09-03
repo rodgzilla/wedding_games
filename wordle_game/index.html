@@ -224,6 +224,64 @@
     .recap-row .recap-time {
       color: #666;
     }
+    /* ── Launch animation ────────────────────────────────────────────────── */
+
+    #launch-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      overflow: hidden;
+      background: #0b1026;
+      touch-action: none;
+    }
+
+    #launch-overlay.playing { display: block; }
+
+    #launch-canvas {
+      position: absolute;
+      inset: 0;
+      display: block;
+    }
+
+    #launch-craft {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 220px;
+      height: auto;
+      transform-origin: 0 0;
+      will-change: transform;
+      filter: drop-shadow(0 0 18px rgba(245, 166, 35, 0.45));
+    }
+
+    #launch-countdown {
+      position: absolute;
+      left: 50%;
+      top: 36%;
+      opacity: 0;
+      font-size: clamp(3rem, 17vw, 7rem);
+      max-width: 94vw;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 28px rgba(201, 180, 88, 0.95);
+      white-space: nowrap;
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
+
+    #replay-btn {
+      padding: 10px 22px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      background: #c9b458;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #replay-btn:hover { background: #a8952f; }
   </style>
 </head>
 <body>
@@ -241,7 +299,55 @@
     <h2>Bravo, tu as fini !</h2>
     <img id="recap-photo" src="selki.jpg" alt="Selki, le chien des mariés">
     <div id="recap-caption">Félicitations ! Tu as gagné une photo de Selki !</div>
+    <button id="replay-btn">Rejouer l'animation 🚀</button>
     <div id="recap-results"></div>
+  </div>
+  <div id="launch-overlay">
+    <canvas id="launch-canvas"></canvas>
+    <svg id="launch-craft" viewBox="0 0 240 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <clipPath id="selki-head-clip"><circle cx="162" cy="94" r="46"/></clipPath>
+        <linearGradient id="rocket-body" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#f4ead0"/>
+          <stop offset="0.45" stop-color="#d9cf9a"/>
+          <stop offset="1" stop-color="#9c9059"/>
+        </linearGradient>
+        <linearGradient id="rocket-red" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#e07a63"/>
+          <stop offset="0.45" stop-color="#c0503f"/>
+          <stop offset="1" stop-color="#8f3628"/>
+        </linearGradient>
+      </defs>
+
+      <g id="craft-flame">
+        <path d="M98 306 Q120 380 142 306 Z" fill="#f5a623"/>
+        <path d="M107 306 Q120 352 133 306 Z" fill="#ffe066"/>
+      </g>
+
+      <!-- rocket: red nose and fins so it reads apart from the green rider -->
+      <path d="M120 40 C104 70 92 108 92 138 L148 138 C148 108 136 70 120 40 Z" fill="url(#rocket-red)"/>
+      <rect x="92" y="134" width="56" height="156" rx="7" fill="url(#rocket-body)"/>
+      <path d="M92 234 L58 302 L92 288 Z" fill="url(#rocket-red)"/>
+      <path d="M148 234 L182 302 L148 288 Z" fill="url(#rocket-red)"/>
+      <rect x="92" y="252" width="56" height="15" fill="#c0503f"/>
+      <path d="M96 288 L88 312 L152 312 L144 288 Z" fill="#5a5f63"/>
+      <circle cx="120" cy="216" r="17" fill="#eaf3e8" stroke="#5a5f63" stroke-width="4"/>
+
+      <!-- dinosaur rider, outlined so it stays legible against the rocket -->
+      <g stroke="#31562e" stroke-width="2.5" stroke-linejoin="round">
+        <path d="M76 146 C40 132 22 152 6 138 C18 176 58 184 84 168 Z" fill="#538d4e"/>
+        <path d="M120 172 q-12 30 4 40 h28 q-14 -19 -10 -40 z" fill="#3f6f3b"/>
+        <path d="M136 128 L146 84 L174 96 L150 148 Z" fill="#6aaa64"/>
+        <ellipse cx="112" cy="146" rx="44" ry="30" fill="#6aaa64"/>
+        <path d="M76 130 l6 -16 l9 15 z" fill="#3f6f3b"/>
+        <path d="M90 122 l6 -16 l9 15 z" fill="#3f6f3b"/>
+        <path d="M104 117 l6 -16 l9 15 z" fill="#3f6f3b"/>
+        <path d="M144 146 l28 17 l-9 12 l-28 -17 z" fill="#6aaa64"/>
+      </g>
+      <image href="selki_4.jpg" x="85.3" y="23.9" width="131.4" height="131.4" clip-path="url(#selki-head-clip)"/>
+      <circle cx="162" cy="94" r="46" fill="none" stroke="#538d4e" stroke-width="6"/>
+    </svg>
+    <div id="launch-countdown"></div>
   </div>
   <script type="module" src="game.js"></script>
 </body>

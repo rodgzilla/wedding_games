@@ -7,6 +7,7 @@ import {
   parseReferenceTimes,
   buildResultMessage,
 } from './logic.js';
+import { playLaunchAnimation, preloadLaunchAssets } from './animation.js';
 
 const MAX_GUESSES = 6;
 const FLIP_DURATION = 350;
@@ -51,6 +52,8 @@ async function init() {
   const stripped = dictWords.map(w => w.normalize('NFD').replace(/[̀-ͯ]/g, ''));
   validGuesses = new Set([...dictWords, ...stripped, ...words]);
   referenceTimes = parseReferenceTimes(refTimesText);
+
+  preloadLaunchAssets();
 
   wordIndex = 0;
   results = [];
@@ -269,7 +272,9 @@ function endGame(won) {
 
 document.getElementById('next-btn').addEventListener('click', () => {
   if (wordIndex === sublist.length - 1) {
-    showRecap();
+    // The overlay covers the page while it plays, so it also swallows any
+    // further taps on this button. showRecap() runs whatever happens.
+    playLaunchAnimation().then(showRecap);
   } else {
     wordIndex++;
     startRound();
@@ -297,6 +302,10 @@ function showRecap() {
   });
   document.getElementById('recap').style.display = 'flex';
 }
+
+document.getElementById('replay-btn').addEventListener('click', () => {
+  playLaunchAnimation();
+});
 
 function showMessage(text) {
   document.getElementById('message').textContent = text;
