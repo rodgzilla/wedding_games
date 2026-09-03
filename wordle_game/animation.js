@@ -11,8 +11,12 @@
 
 import { pythagorasNodes } from './fractal.js';
 
-const HEAD_SRC = 'selki_3.jpg';     // square crop — one square of the fractal
-const HEAD_BUFFER_PX = 128;         // heads never draw larger than this on screen
+const HEAD_SRC = 'selki_5.png';     // cut-out head on transparency — one square of the fractal
+const HEAD_BUFFER_PX = 256;         // heads never draw larger than this on screen
+const HEAD_INSET_PX = 16;           // room in the buffer for the glow to spread
+const HEAD_GLOW_PX = 14;            // glow radius, in buffer pixels
+const HEAD_GLOW_COLOR = 'rgba(255, 255, 255, 0.85)';
+const HEAD_OVERDRAW = 1.32;         // heads spill past their square so the plume reads as one mass
 
 const DURATION = 10000;
 const WATCHDOG_MS = DURATION + 2500;
@@ -25,6 +29,7 @@ const T_SWAY_END = 9200;
 const T_FADE_START = 9500;
 
 const BASE_ANGLE = 45 * Math.PI / 180;
+const TREE_ROTATION = Math.PI;      // the tree hangs from the top and grows down
 const SWAY_MAX = 0.34;              // radians the branch angle swings during the thrash
 const SWAY_RECOIL = 0.26;           // how far the tree shrinks back at full thrash
 const FADE_IN_MS = 300;
@@ -51,15 +56,65 @@ function loadImage(src) {
   });
 }
 
-// Decode the 900x900 JPEG once into a small buffer. Every one of the ~255
+// Decode the 900x900 PNG once into a small buffer. Every one of the ~255
 // squares then draws from that buffer instead of re-sampling the full image.
+//
+// The buffer also carries a baked-in border. The source is a cut-out on
+// transparency, so stroking a rectangle would box in a floating head. A hard
+// dilated outline is no good either: Selki's chest runs off the bottom of the
+// source frame, and dilating that straight alpha edge draws a white bar across
+// every square. A soft glow follows the fur, turns that straight edge into a
+// wisp, and suits a plume of smoke. Built once, at preload.
 async function buildHeadBuffer() {
   const img = await loadImage(HEAD_SRC);
+  const size = HEAD_BUFFER_PX;
+  const inset = HEAD_INSET_PX;
+  const inner = size - inset * 2;
+
   const buffer = document.createElement('canvas');
-  buffer.width = HEAD_BUFFER_PX;
-  buffer.height = HEAD_BUFFER_PX;
-  buffer.getContext('2d').drawImage(img, 0, 0, HEAD_BUFFER_PX, HEAD_BUFFER_PX);
+  buffer.width = size;
+  buffer.height = size;
+  const bctx = buffer.getContext('2d');
+
+  const feathered = featherEdges(img, inner);
+
+  bctx.shadowColor = HEAD_GLOW_COLOR;
+  bctx.shadowBlur = HEAD_GLOW_PX;
+  for (let i = 0; i < 3; i++) bctx.drawImage(feathered, inset, inset);
+
+  bctx.shadowColor = 'transparent';
+  bctx.shadowBlur = 0;
+  bctx.drawImage(feathered, inset, inset);
   return buffer;
+}
+
+// Selki's chest runs off the bottom of the source frame and her ears graze the
+// sides, so the cut-out's alpha ends on hard straight edges there. Fade those
+// edges out before the glow is built, or the glow traces them as bright bars
+// across every square. The bottom needs the widest fade — that is where the
+// crop actually cuts through her.
+function featherEdges(img, inner) {
+  const canvas = document.createElement('canvas');
+  canvas.width = inner;
+  canvas.height = inner;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, inner, inner);
+  ctx.globalCompositeOperation = 'destination-out';
+
+  const fade = (x0, y0, x1, y1, x, y, w, h) => {
+    const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, y, w, h);
+  };
+
+  const bottom = inner * 0.16;
+  const side = inner * 0.07;
+  fade(0, inner - bottom, 0, inner, 0, inner - bottom, inner, bottom);
+  fade(side, 0, 0, 0, 0, 0, side, inner);
+  fade(inner - side, 0, inner, 0, inner - side, 0, side, inner);
+  return canvas;
 }
 
 export function preloadLaunchAssets() {
@@ -96,7 +151,7 @@ function cornersOf(node) {
 // but fitting for that would leave the resting tree at a third of its size on a
 // portrait phone — so the thrash is kept in frame by SWAY_RECOIL instead.
 function fitTree(width, height, maxDepth) {
-  let minX = 0, maxX = 0, minY = 0;
+  let minX = 0, maxX = 0, minY = 0, maxY = 0;
 
   const unit = pythagorasNodes({
     growth: maxDepth + 1,
@@ -104,6 +159,7 @@ function fitTree(width, height, maxDepth) {
     angle: BASE_ANGLE,
     baseSize: 1,
     origin: { x: 0, y: 0 },
+    rotation: TREE_ROTATION,
     minSize: 0,
   });
   for (const node of unit) {
@@ -111,21 +167,25 @@ function fitTree(width, height, maxDepth) {
       if (corner.x < minX) minX = corner.x;
       if (corner.x > maxX) maxX = corner.x;
       if (corner.y < minY) minY = corner.y;
+      if (corner.y > maxY) maxY = corner.y;
     }
   }
 
-  const padY = height * 0.93;
   // A 45-degree tree is ~1.5x wider than it is tall, so fitting its full width
-  // on a portrait phone would leave it hugging the bottom edge. Letting it run
-  // a little past both sides trades the outermost twigs for a tree that fills
+  // on a portrait phone would leave it hugging one edge. Letting it run a
+  // little past both sides trades the outermost twigs for a plume that fills
   // the frame.
+  const topY = height * 0.02;
   const baseSize = Math.min(
-    (width * 1.2) / (maxX - minX),
-    (padY - height * 0.05) / -minY,
+    (width * 1.9) / (maxX - minX),
+    (height * 0.96) / (maxY - minY),
   );
   return {
     baseSize,
-    origin: { x: width / 2 - ((minX + maxX) / 2) * baseSize, y: padY },
+    origin: {
+      x: width / 2 - ((minX + maxX) / 2) * baseSize,
+      y: topY - minY * baseSize,
+    },
   };
 }
 
@@ -227,6 +287,7 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
   const smoke = [];
   const sparks = [];
   const frameTimes = [];
+  let budgetRounds = 0;
   let lastFrame = 0;
   let rafId = null;
   let watchdogId = null;
@@ -315,21 +376,26 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
       angle: swayAngleAt(t),
       baseSize: layout.baseSize * swayRecoil(t),
       origin: layout.origin,
+      rotation: TREE_ROTATION,
       minSize: 1.5,
     });
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     for (const node of nodes) {
       const size = node.size * node.scale;
       if (size < 1) continue;
       ctx.save();
       ctx.translate(node.x, node.y);
       ctx.rotate(node.rotation);
-      ctx.drawImage(headBuffer, -size / 2, -size, size, size);
-      if (size > 14) {
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-size / 2, -size, size, size);
-      }
+      // The square itself is upside down — the whole tree hangs. Spin the
+      // texture back about the square's centre so Selki stays the right way up
+      // while each square still keeps the tilt of the branch carrying it.
+      ctx.translate(0, -size / 2);
+      ctx.rotate(-TREE_ROTATION);
+      // A cut-out fills maybe two thirds of its square, so squares drawn to
+      // size leave the plume looking like scattered stickers. Overdrawing lets
+      // neighbours overlap into a continuous billow.
+      const drawn = size * HEAD_OVERDRAW;
+      ctx.drawImage(headBuffer, -drawn / 2, -drawn / 2, drawn, drawn);
       ctx.restore();
     }
   }
@@ -442,21 +508,27 @@ function run({ overlay, canvas, ctx, craft, countdown, resolve }) {
   // Back off a level or two of depth if the device cannot hold a smooth frame
   // rate. Sampling only starts once the tree is on screen — earlier frames are
   // the bare countdown and say nothing about the load this is meant to shed.
+  //
+  // It samples twice: shedding two levels is not always enough on a weak phone,
+  // and one measurement cannot tell whether it was. The second round re-checks
+  // what the first one bought.
   const BUDGET_SAMPLE_FROM = T_LIFTOFF + 700;
   const BUDGET_SAMPLE_SIZE = 40;
+  const BUDGET_ROUNDS = 2;
 
   function checkBudget(now, t) {
     const previous = lastFrame;
     lastFrame = now;
-    if (t < BUDGET_SAMPLE_FROM || !previous) return;
-    if (frameTimes.length >= BUDGET_SAMPLE_SIZE) return;
+    if (t < BUDGET_SAMPLE_FROM || !previous || budgetRounds >= BUDGET_ROUNDS) return;
 
     frameTimes.push(now - previous);
     if (frameTimes.length < BUDGET_SAMPLE_SIZE) return;
 
     const median = [...frameTimes].sort((a, b) => a - b)[BUDGET_SAMPLE_SIZE >> 1];
-    if (median > 30) drawDepth = Math.max(5, drawDepth - 2);
-    else if (median > 22) drawDepth = Math.max(5, drawDepth - 1);
+    if (median > 30) drawDepth = Math.max(4, drawDepth - 2);
+    else if (median > 22) drawDepth = Math.max(4, drawDepth - 1);
+    frameTimes.length = 0;
+    budgetRounds++;
   }
 
   // ── Loop ────────────────────────────────────────────────────────────────────
