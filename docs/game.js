@@ -88,6 +88,9 @@ function startRound() {
 function renderGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
+  // Drives --tile-size in the stylesheet: longer words get smaller tiles so an
+  // 8-letter row still fits a phone screen.
+  grid.style.setProperty('--cols', target.length);
   for (let r = 0; r < MAX_GUESSES; r++) {
     const row = document.createElement('div');
     row.className = 'row';

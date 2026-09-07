@@ -14,8 +14,8 @@
       min-height: 100vh;
       background: #fff;
       font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
-      padding-top: 24px;
-      gap: 16px;
+      padding-top: clamp(8px, 2.5vw, 24px);
+      gap: clamp(8px, 2.2vw, 16px);
     }
 
     #message {
@@ -46,13 +46,13 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.8rem;
+      font-size: clamp(0.7rem, 3vw, 0.8rem);
       color: #333;
     }
 
     .legend-tile {
-      width: 22px;
-      height: 22px;
+      width: clamp(16px, 4.5vw, 22px);
+      height: clamp(16px, 4.5vw, 22px);
       border-radius: 3px;
       flex-shrink: 0;
     }
@@ -62,24 +62,31 @@
     .legend-tile.grey   { background: #787c7e; }
 
     #grid {
+      /* --cols is set per round by renderGrid(); words run 5-8 letters long. */
+      --cols: 5;
+      --tile-gap: clamp(3px, 1vw, 5px);
+      --tile-size: min(
+        56px,
+        calc((100vw - 20px - (var(--cols) - 1) * var(--tile-gap)) / var(--cols))
+      );
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: var(--tile-gap);
     }
 
     .row {
       display: flex;
-      gap: 5px;
+      gap: var(--tile-gap);
     }
 
     .tile {
-      width: 56px;
-      height: 56px;
+      width: var(--tile-size);
+      height: var(--tile-size);
       border: 2px solid #d3d6da;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.8rem;
+      font-size: calc(var(--tile-size) * 0.52);
       font-weight: bold;
       text-transform: uppercase;
       background: #fff;
@@ -110,29 +117,32 @@
     .row.shake { animation: shake 0.4s ease-in-out; }
 
     #keyboard {
+      /* The 10-key top row sets the width budget: 10 keys + 9 gaps + padding. */
+      --kb-gap: clamp(3px, 1vw, 5px);
+      --key-w: min(40px, calc((100vw - 20px - 9 * var(--kb-gap)) / 10));
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: clamp(4px, 1.2vw, 6px);
       width: 100%;
       max-width: 500px;
-      padding: 0 8px;
+      padding: 0 6px;
     }
 
     .keyboard-row {
       display: flex;
-      gap: 5px;
+      gap: var(--kb-gap);
       justify-content: center;
     }
 
     .key {
-      height: 56px;
-      min-width: 40px;
-      padding: 0 6px;
+      height: clamp(40px, 11vw, 52px);
+      min-width: var(--key-w);
+      padding: 0 2px;
       border: none;
       border-radius: 4px;
       background: #d3d6da;
-      font-size: 0.85rem;
+      font-size: clamp(0.72rem, 3.4vw, 0.85rem);
       font-weight: bold;
       cursor: pointer;
       text-transform: uppercase;
@@ -141,7 +151,10 @@
       touch-action: manipulation;
     }
 
-    .key.wide { min-width: 64px; font-size: 0.75rem; }
+    .key.wide {
+      min-width: calc(var(--key-w) * 1.6);
+      font-size: clamp(0.55rem, 2.4vw, 0.75rem);
+    }
 
     .key.green  { background: #6aaa64; color: #fff; }
     .key.yellow { background: #c9b458; color: #fff; }

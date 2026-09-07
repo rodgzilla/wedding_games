@@ -34,7 +34,7 @@ Everything lives in `wordle_game/`:
 
 ### Files
 
-- `index.html` — page structure and all CSS (inline `<style>` block), no separate stylesheet. Loads `game.js` as an ES module.
+- `index.html` — page structure and all CSS (inline `<style>` block), no separate stylesheet. Loads `game.js` as an ES module. Sizing is viewport-relative so phones never overflow: tiles come from `--tile-size` on `#grid`, derived from `--cols` (the word length, set by `renderGrid()`) and capped at 56px, and keys from `--key-w` on `#keyboard`, sized so the 10-key top row always fits `100vw` and capped at 40px. Never re-introduce fixed pixel widths for tiles or keys.
 - `package.json` — marks the directory as ES modules (`"type": "module"`), enabling `import`/`export` syntax in Node. No dependencies, no `npm install` required.
 - `logic.js` — pure, unit-tested game logic (no DOM, no side effects). Exports: `computeFeedback()` (Wordle feedback: green/yellow/grey), `parseWordList()`, `parseSublists()`, `pickRandomSublist()`, `parseReferenceTimes()` (reference time data), `formatTime()` (format seconds as "MmSS"), and `buildResultMessage()` (win/loss messages with optional reference-time comparisons).
 - `logic.test.js` — unit tests for `logic.js` using Node's built-in `node:test` module. 21 of the suite's 35 tests, covering all feedback cases, sublist parsing, reference-time parsing (including rejection of unrecognized names and empty seconds fields), and message building (Clarisse vs. David, faster/slower/tie French grammar).
