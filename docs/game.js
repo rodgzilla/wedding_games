@@ -3,8 +3,7 @@ import {
   parseWordList,
   parseSublists,
   pickRandomSublist,
-  formatTime,
-  parseReferenceTimes,
+  parseReferenceGuesses,
   buildResultMessage,
 } from './logic.js';
 import { playLaunchAnimation, preloadLaunchAssets } from './animation.js';
@@ -30,18 +29,15 @@ let messageTimeoutId = null;
 let sublist = [];
 let wordIndex = 0;
 let results = [];
-let timerStart = null;
-let timerIntervalId = null;
-let elapsedSeconds = 0;
-let referenceTimes = new Map();
+let referenceGuesses = new Map();
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [wordsText, dictText, refTimesText] = await Promise.all([
+  const [wordsText, dictText, refGuessesText] = await Promise.all([
     fetch('words.txt').then(r => r.text()),
     fetch('dictionary.txt').then(r => r.text()),
-    fetch('reference_times.txt').then(r => r.text()),
+    fetch('reference_guesses.txt').then(r => r.text()),
   ]);
 
   const sublists = parseSublists(wordsText);
@@ -51,7 +47,7 @@ async function init() {
   const dictWords = parseWordList(dictText);
   const stripped = dictWords.map(w => w.normalize('NFD').replace(/[̀-ͯ]/g, ''));
   validGuesses = new Set([...dictWords, ...stripped, ...words]);
-  referenceTimes = parseReferenceTimes(refTimesText);
+  referenceGuesses = parseReferenceGuesses(refGuessesText);
 
   preloadLaunchAssets();
 
@@ -66,13 +62,6 @@ function startRound() {
   currentRow = 0;
   gameOver = false;
   keyColors = {};
-  if (timerIntervalId !== null) {
-    clearInterval(timerIntervalId);
-    timerIntervalId = null;
-  }
-  timerStart = null;
-  elapsedSeconds = 0;
-  document.getElementById('timer').textContent = '';
   showMessage('');
   document.getElementById('next-btn').style.display = 'none';
   document.getElementById('recap').style.display = 'none';
@@ -172,24 +161,6 @@ function handleKey(key) {
 
 // ── Guess logic ───────────────────────────────────────────────────────────────
 
-function startTimer() {
-  timerStart = Date.now();
-  timerIntervalId = setInterval(updateTimerDisplay, 1000);
-  updateTimerDisplay();
-}
-
-function stopTimer() {
-  clearInterval(timerIntervalId);
-  timerIntervalId = null;
-  elapsedSeconds = Math.floor((Date.now() - timerStart) / 1000);
-  updateTimerDisplay();
-}
-
-function updateTimerDisplay() {
-  const seconds = timerStart === null ? 0 : Math.floor((Date.now() - timerStart) / 1000);
-  document.getElementById('timer').textContent = formatTime(seconds);
-}
-
 function submitGuess() {
   if (currentGuess.length < target.length) {
     shakeRow(currentRow);
@@ -202,15 +173,13 @@ function submitGuess() {
     messageTimeoutId = setTimeout(() => showMessage(''), 1500);
     return;
   }
-  if (timerStart === null) {
-    startTimer();
-  }
   clearTimeout(messageTimeoutId);
   showMessage('');
   const feedback = computeFeedback(currentGuess, target);
   const won = feedback.every(f => f === 'green');
+  // Set here rather than in endGame() so handleKey()'s gameOver guard blocks
+  // any further Enter presses during the ~1s reveal animation that follows.
   if (won || currentRow === MAX_GUESSES - 1) {
-    stopTimer();
     gameOver = true;
   }
   revealRow(currentRow, currentGuess, feedback, () => {
@@ -264,9 +233,10 @@ function shakeRow(rowIndex) {
 
 function endGame(won) {
   gameOver = true;
-  results.push({ word: target, won, elapsedSeconds });
-  const reference = referenceTimes.get(target);
-  showMessage(buildResultMessage({ won, elapsedSeconds, target, reference }));
+  const guessCount = currentRow + 1;
+  results.push({ word: target, won, guessCount });
+  const reference = referenceGuesses.get(target);
+  showMessage(buildResultMessage({ won, guessCount, target, reference }));
   const isLastWord = wordIndex === sublist.length - 1;
   const nextBtn = document.getElementById('next-btn');
   nextBtn.textContent = isLastWord ? 'Voir le récap' : 'Mot suivant';
@@ -290,7 +260,6 @@ function showRecap() {
   document.getElementById('legend').style.display = 'none';
   document.getElementById('next-btn').style.display = 'none';
   showMessage('');
-  document.getElementById('timer').textContent = '';
   const recapResults = document.getElementById('recap-results');
   recapResults.innerHTML = '';
   results.forEach(r => {
@@ -299,7 +268,7 @@ function showRecap() {
     row.innerHTML = `
       <span class="recap-status">${r.won ? '✅' : '❌'}</span>
       <span class="recap-word">${r.word}</span>
-      <span class="recap-time">${formatTime(r.elapsedSeconds)}</span>
+      <span class="recap-guesses">${r.guessCount}/${MAX_GUESSES}</span>
     `;
     recapResults.appendChild(row);
   });

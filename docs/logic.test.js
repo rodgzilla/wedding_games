@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceTimes, formatTime, buildResultMessage } from './logic.js';
+import { computeFeedback, parseWordList, parseSublists, pickRandomSublist, parseReferenceGuesses, buildResultMessage } from './logic.js';
 
 test('computeFeedback: all green', () => {
   assert.deepStrictEqual(computeFeedback('NOCES', 'NOCES'), ['green', 'green', 'green', 'green', 'green']);
@@ -46,117 +46,121 @@ test('pickRandomSublist selects based on the injected random function', () => {
   assert.deepStrictEqual(pickRandomSublist(sublists, () => 0.99), ['C']);
 });
 
-test('parseReferenceTimes parses word/name/seconds lines into a Map', () => {
-  const text = 'AMOUR,CLARISSE,168\nNOCES,DAVID,95\n';
-  const result = parseReferenceTimes(text);
+test('parseReferenceGuesses parses word/name/guesses lines into a Map', () => {
+  const text = 'AMOUR,CLARISSE,4\nNOCES,DAVID,2\n';
+  const result = parseReferenceGuesses(text);
   assert.strictEqual(result.size, 2);
-  assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', seconds: 168 });
-  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', seconds: 95 });
+  assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', guesses: 4 });
+  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', guesses: 2 });
 });
 
-test('parseReferenceTimes skips blank lines and trims/uppercases fields', () => {
-  const text = '\n  amour , clarisse , 168 \n\n';
-  const result = parseReferenceTimes(text);
+test('parseReferenceGuesses skips blank lines and trims/uppercases fields', () => {
+  const text = '\n  amour , clarisse , 4 \n\n';
+  const result = parseReferenceGuesses(text);
   assert.strictEqual(result.size, 1);
-  assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', seconds: 168 });
+  assert.deepStrictEqual(result.get('AMOUR'), { name: 'CLARISSE', guesses: 4 });
 });
 
-test('parseReferenceTimes skips lines with an unrecognized name value', () => {
-  const text = 'AMOUR,CLARRISE,168\nNOCES,DAVID,95\n';
-  const result = parseReferenceTimes(text);
-  assert.strictEqual(result.size, 1);
-  assert.strictEqual(result.has('AMOUR'), false);
-  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', seconds: 95 });
-});
-
-test('parseReferenceTimes skips lines with an empty seconds field', () => {
-  const text = 'AMOUR,CLARISSE,\nNOCES,DAVID,95\n';
-  const result = parseReferenceTimes(text);
+test('parseReferenceGuesses skips lines with an unrecognized name value', () => {
+  const text = 'AMOUR,CLARRISE,4\nNOCES,DAVID,2\n';
+  const result = parseReferenceGuesses(text);
   assert.strictEqual(result.size, 1);
   assert.strictEqual(result.has('AMOUR'), false);
-  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', seconds: 95 });
+  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', guesses: 2 });
 });
 
-test('formatTime formats seconds as MmSS', () => {
-  assert.strictEqual(formatTime(168), '2mn48');
-  assert.strictEqual(formatTime(0), '0mn00');
-  assert.strictEqual(formatTime(5), '0mn05');
-  assert.strictEqual(formatTime(60), '1mn00');
-  assert.strictEqual(formatTime(725), '12mn05');
+test('parseReferenceGuesses skips lines with an empty guesses field', () => {
+  const text = 'AMOUR,CLARISSE,\nNOCES,DAVID,2\n';
+  const result = parseReferenceGuesses(text);
+  assert.strictEqual(result.size, 1);
+  assert.strictEqual(result.has('AMOUR'), false);
+  assert.deepStrictEqual(result.get('NOCES'), { name: 'DAVID', guesses: 2 });
+});
+
+test('parseReferenceGuesses skips a guess count that is not a positive integer', () => {
+  const text = 'AMOUR,CLARISSE,0\nVOILE,DAVID,3.5\nFLEUR,CLARISSE,-2\nNOCES,DAVID,deux\nBAGUE,DAVID,2\n';
+  const result = parseReferenceGuesses(text);
+  assert.strictEqual(result.size, 1);
+  assert.deepStrictEqual(result.get('BAGUE'), { name: 'DAVID', guesses: 2 });
 });
 
 test('buildResultMessage: win with no reference data', () => {
-  const msg = buildResultMessage({ won: true, elapsedSeconds: 168, target: 'AMOUR', reference: undefined });
-  assert.strictEqual(msg, 'Tu as deviné le mot en 2mn48 !');
+  const msg = buildResultMessage({ won: true, guessCount: 3, target: 'AMOUR', reference: undefined });
+  assert.strictEqual(msg, 'Tu as deviné le mot en 3 essais !');
 });
 
-test('buildResultMessage: win, faster than Clarisse', () => {
+test('buildResultMessage: win in a single guess uses the singular', () => {
+  const msg = buildResultMessage({ won: true, guessCount: 1, target: 'AMOUR', reference: undefined });
+  assert.strictEqual(msg, 'Tu as deviné le mot en 1 essai !');
+});
+
+test('buildResultMessage: win, fewer guesses than Clarisse', () => {
   const msg = buildResultMessage({
-    won: true, elapsedSeconds: 100, target: 'AMOUR',
-    reference: { name: 'CLARISSE', seconds: 168 },
+    won: true, guessCount: 3, target: 'AMOUR',
+    reference: { name: 'CLARISSE', guesses: 4 },
   });
   assert.strictEqual(
     msg,
-    "Tu as deviné le mot en 1mn40 ! Clarisse l'a deviné en 2mn48, tu étais plus rapide qu'elle, félicitations !"
+    "Tu as deviné le mot en 3 essais ! Clarisse l'a trouvé en 4 essais, tu as fait mieux qu'elle, félicitations !"
   );
 });
 
-test('buildResultMessage: win, faster than David', () => {
+test('buildResultMessage: win, fewer guesses than David', () => {
   const msg = buildResultMessage({
-    won: true, elapsedSeconds: 100, target: 'AMOUR',
-    reference: { name: 'DAVID', seconds: 168 },
+    won: true, guessCount: 3, target: 'AMOUR',
+    reference: { name: 'DAVID', guesses: 4 },
   });
   assert.strictEqual(
     msg,
-    "Tu as deviné le mot en 1mn40 ! David l'a deviné en 2mn48, tu étais plus rapide que lui, félicitations !"
+    "Tu as deviné le mot en 3 essais ! David l'a trouvé en 4 essais, tu as fait mieux que lui, félicitations !"
   );
 });
 
-test('buildResultMessage: win, slower than Clarisse', () => {
+test('buildResultMessage: win, more guesses than Clarisse', () => {
   const msg = buildResultMessage({
-    won: true, elapsedSeconds: 200, target: 'AMOUR',
-    reference: { name: 'CLARISSE', seconds: 168 },
+    won: true, guessCount: 5, target: 'AMOUR',
+    reference: { name: 'CLARISSE', guesses: 3 },
   });
   assert.strictEqual(
     msg,
-    "Tu as deviné le mot en 3mn20 ! Clarisse l'a deviné en 2mn48, elle était plus rapide que toi !"
+    "Tu as deviné le mot en 5 essais ! Clarisse l'a trouvé en 3 essais, elle a fait mieux que toi !"
   );
 });
 
-test('buildResultMessage: win, slower than David', () => {
+test('buildResultMessage: win, more guesses than David', () => {
   const msg = buildResultMessage({
-    won: true, elapsedSeconds: 200, target: 'AMOUR',
-    reference: { name: 'DAVID', seconds: 168 },
+    won: true, guessCount: 5, target: 'AMOUR',
+    reference: { name: 'DAVID', guesses: 1 },
   });
   assert.strictEqual(
     msg,
-    "Tu as deviné le mot en 3mn20 ! David l'a deviné en 2mn48, il était plus rapide que toi !"
+    "Tu as deviné le mot en 5 essais ! David l'a trouvé en 1 essai, il a fait mieux que toi !"
   );
 });
 
-test('buildResultMessage: win, tie', () => {
+test('buildResultMessage: win, same number of guesses', () => {
   const msg = buildResultMessage({
-    won: true, elapsedSeconds: 168, target: 'AMOUR',
-    reference: { name: 'DAVID', seconds: 168 },
+    won: true, guessCount: 3, target: 'AMOUR',
+    reference: { name: 'DAVID', guesses: 3 },
   });
   assert.strictEqual(
     msg,
-    "Tu as deviné le mot en 2mn48 ! David l'a deviné exactement dans le même temps !"
+    "Tu as deviné le mot en 3 essais ! David l'a trouvé en 3 essais aussi, vous êtes à égalité !"
   );
 });
 
 test('buildResultMessage: loss with no reference data', () => {
-  const msg = buildResultMessage({ won: false, elapsedSeconds: 300, target: 'AMOUR', reference: undefined });
-  assert.strictEqual(msg, "Le mot était : AMOUR. Tu as mis 5mn00 avant d'être à court d'essais.");
+  const msg = buildResultMessage({ won: false, guessCount: 6, target: 'AMOUR', reference: undefined });
+  assert.strictEqual(msg, "Le mot était : AMOUR. Tu n'as pas trouvé en 6 essais.");
 });
 
 test('buildResultMessage: loss with reference data', () => {
   const msg = buildResultMessage({
-    won: false, elapsedSeconds: 300, target: 'AMOUR',
-    reference: { name: 'CLARISSE', seconds: 168 },
+    won: false, guessCount: 6, target: 'AMOUR',
+    reference: { name: 'CLARISSE', guesses: 4 },
   });
   assert.strictEqual(
     msg,
-    "Le mot était : AMOUR. Tu as mis 5mn00 avant d'être à court d'essais. Clarisse l'a deviné en 2mn48."
+    "Le mot était : AMOUR. Tu n'as pas trouvé en 6 essais. Clarisse l'a trouvé en 4 essais."
   );
 });

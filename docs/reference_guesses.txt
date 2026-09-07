@@ -1,0 +1,9 @@
+# PLACEHOLDER VALUES — replace with the real number of tries Clarisse and
+# David took before the wedding.
+# Format: WORD,NAME,GUESSES  (NAME is CLARISSE or DAVID, GUESSES is 1-6, one per word)
+AMOUR,CLARISSE,2
+TEMOIN,DAVID,6
+BONHEUR,DAVID,3
+BOUQUET,DAVID,4
+PROMESSE,CLARISSE,3
+ALLIANCE,CLARISSE,1

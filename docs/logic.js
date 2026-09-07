@@ -37,63 +37,60 @@ export function pickRandomSublist(sublists, randomFn = Math.random) {
   return sublists[Math.floor(randomFn() * sublists.length)];
 }
 
-export function parseReferenceTimes(text) {
+export function parseReferenceGuesses(text) {
   const map = new Map();
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     const parts = trimmed.split(',').map(p => p.trim());
     if (parts.length !== 3) continue;
-    const [word, name, secondsStr] = parts;
+    const [word, name, guessesStr] = parts;
     const upperName = name.toUpperCase();
     if (upperName !== 'CLARISSE' && upperName !== 'DAVID') continue;
-    const seconds = Number(secondsStr);
-    if (!word || secondsStr.length === 0 || !Number.isFinite(seconds) || seconds < 0) continue;
-    map.set(word.toUpperCase(), { name: upperName, seconds });
+    const guesses = Number(guessesStr);
+    if (!word || guessesStr.length === 0 || !Number.isInteger(guesses) || guesses < 1) continue;
+    map.set(word.toUpperCase(), { name: upperName, guesses });
   }
   return map;
 }
 
-export function formatTime(seconds) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}mn${String(remainingSeconds).padStart(2, '0')}`;
+function formatGuesses(count) {
+  return count === 1 ? '1 essai' : `${count} essais`;
 }
 
 const DISPLAY_NAME = { CLARISSE: 'Clarisse', DAVID: 'David' };
-const FASTER_THAN_PHRASE = {
-  CLARISSE: "tu étais plus rapide qu'elle",
-  DAVID: 'tu étais plus rapide que lui',
+const BETTER_THAN_PHRASE = {
+  CLARISSE: "tu as fait mieux qu'elle",
+  DAVID: 'tu as fait mieux que lui',
 };
-const SLOWER_THAN_PHRASE = {
-  CLARISSE: 'elle était plus rapide que toi',
-  DAVID: 'il était plus rapide que toi',
+const WORSE_THAN_PHRASE = {
+  CLARISSE: 'elle a fait mieux que toi',
+  DAVID: 'il a fait mieux que toi',
 };
 
-export function buildResultMessage({ won, elapsedSeconds, target, reference }) {
-  const time = formatTime(elapsedSeconds);
+export function buildResultMessage({ won, guessCount, target, reference }) {
+  const guesses = formatGuesses(guessCount);
 
   if (won) {
-    let message = `Tu as deviné le mot en ${time} !`;
+    let message = `Tu as deviné le mot en ${guesses} !`;
     if (reference) {
       const name = DISPLAY_NAME[reference.name];
-      const refTime = formatTime(reference.seconds);
-      if (elapsedSeconds < reference.seconds) {
-        message += ` ${name} l'a deviné en ${refTime}, ${FASTER_THAN_PHRASE[reference.name]}, félicitations !`;
-      } else if (elapsedSeconds > reference.seconds) {
-        message += ` ${name} l'a deviné en ${refTime}, ${SLOWER_THAN_PHRASE[reference.name]} !`;
+      const refGuesses = formatGuesses(reference.guesses);
+      if (guessCount < reference.guesses) {
+        message += ` ${name} l'a trouvé en ${refGuesses}, ${BETTER_THAN_PHRASE[reference.name]}, félicitations !`;
+      } else if (guessCount > reference.guesses) {
+        message += ` ${name} l'a trouvé en ${refGuesses}, ${WORSE_THAN_PHRASE[reference.name]} !`;
       } else {
-        message += ` ${name} l'a deviné exactement dans le même temps !`;
+        message += ` ${name} l'a trouvé en ${refGuesses} aussi, vous êtes à égalité !`;
       }
     }
     return message;
   }
 
-  let message = `Le mot était : ${target}. Tu as mis ${time} avant d'être à court d'essais.`;
+  let message = `Le mot était : ${target}. Tu n'as pas trouvé en ${guesses}.`;
   if (reference) {
     const name = DISPLAY_NAME[reference.name];
-    const refTime = formatTime(reference.seconds);
-    message += ` ${name} l'a deviné en ${refTime}.`;
+    message += ` ${name} l'a trouvé en ${formatGuesses(reference.guesses)}.`;
   }
   return message;
 }
