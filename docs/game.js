@@ -7,6 +7,7 @@ import {
   buildResultMessage,
 } from './logic.js';
 import { playLaunchAnimation, preloadLaunchAssets } from './animation.js';
+import { startIntroDemo, stopIntroDemo } from './intro.js';
 
 const MAX_GUESSES = 6;
 const FLIP_DURATION = 350;
@@ -30,6 +31,9 @@ let sublist = [];
 let wordIndex = 0;
 let results = [];
 let referenceGuesses = new Map();
+// False until the guest leaves the intro screen, so stray key presses on the
+// explanation page cannot reach a board that has not been rendered yet.
+let started = false;
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
@@ -53,10 +57,10 @@ async function init() {
 
   wordIndex = 0;
   results = [];
-  startRound();
 }
 
 function startRound() {
+  started = true;
   target = sublist[wordIndex];
   currentGuess = '';
   currentRow = 0;
@@ -65,6 +69,7 @@ function startRound() {
   showMessage('');
   document.getElementById('next-btn').style.display = 'none';
   document.getElementById('recap').style.display = 'none';
+  document.getElementById('message').style.display = 'block';
   document.getElementById('legend').style.display = 'flex';
   document.getElementById('grid').style.display = 'flex';
   document.getElementById('keyboard').style.display = 'flex';
@@ -147,7 +152,7 @@ document.addEventListener('keydown', e => {
 });
 
 function handleKey(key) {
-  if (gameOver) return;
+  if (!started || gameOver) return;
   if (key === '⌫') {
     currentGuess = currentGuess.slice(0, -1);
     updateCurrentRow();
@@ -283,4 +288,26 @@ function showMessage(text) {
   document.getElementById('message').textContent = text;
 }
 
-init();
+// The intro plays straight away; the word lists load behind it, so the tap on
+// "C'est parti !" almost always finds them already there. On the rare slow
+// connection the tap waits on the same promise instead of starting a round
+// with no target word.
+let loadError = null;
+const ready = init().catch(err => { loadError = err; });
+startIntroDemo();
+
+document.getElementById('start-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true;
+  await ready;
+  if (loadError) {
+    // Nothing to play without the word lists; say so rather than leaving a
+    // dead button on a phone at a wedding.
+    console.error(loadError);
+    btn.textContent = 'Recharge la page 🙏';
+    return;
+  }
+  stopIntroDemo();
+  document.getElementById('intro').style.display = 'none';
+  startRound();
+});

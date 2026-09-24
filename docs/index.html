@@ -26,7 +26,7 @@
       text-align: center;
     }
 
-    #legend {
+    .legend {
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -54,7 +54,7 @@
     .legend-tile.yellow { background: #c9b458; }
     .legend-tile.grey   { background: #787c7e; }
 
-    #grid {
+    #grid, #demo-grid {
       /* --cols is set per round by renderGrid(); words run 5-8 letters long. */
       --cols: 5;
       --tile-gap: clamp(3px, 1vw, 5px);
@@ -230,6 +230,89 @@
     .recap-row .recap-guesses {
       color: #666;
     }
+
+    /* ── Intro screen ────────────────────────────────────────────────────── */
+
+    /* A screen of its own: it covers the page, so nothing of the board can
+       show through behind the explanation. */
+    #intro {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      overflow-y: auto;
+      background: #fff;
+    }
+
+    /* `margin: auto` rather than `justify-content: center` — it centres the
+       same way but, on a short screen, overflow stays reachable by scrolling
+       instead of being clipped off the top. */
+    .intro-inner {
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(10px, 2.6vw, 16px);
+      width: 100%;
+      max-width: 420px;
+      padding: clamp(16px, 5vw, 28px) 14px;
+      text-align: center;
+      color: #333;
+    }
+
+    #intro h1 {
+      font-size: clamp(1.25rem, 5.8vw, 1.6rem);
+      line-height: 1.25;
+    }
+
+    #intro p {
+      font-size: clamp(0.85rem, 3.6vw, 0.95rem);
+      line-height: 1.5;
+    }
+
+    #intro .legend {
+      padding: 0;
+    }
+
+    .intro-example {
+      font-size: clamp(0.75rem, 3.2vw, 0.85rem);
+      color: #666;
+    }
+
+    #demo-grid {
+      /* Same tiles as the real board, one size down so the whole intro fits
+         a phone screen without scrolling. */
+      --tile-size: min(42px, calc((100vw - 64px - 4 * var(--tile-gap)) / 5));
+      pointer-events: none;
+    }
+
+    #start-btn {
+      margin-top: 4px;
+      padding: 13px 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      background: #6aaa64;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    #start-btn:hover { background: #538d4e; }
+
+    /* A phone held sideways has very little height: tighten everything so the
+       "C'est parti !" button stays on screen rather than below the fold. */
+    @media (max-height: 580px) {
+      .intro-inner { gap: 7px; padding: 10px 14px; }
+      #intro h1 { font-size: clamp(1rem, 4.4vw, 1.2rem); }
+      #intro p { font-size: clamp(0.72rem, 3vw, 0.8rem); line-height: 1.35; }
+      .legend-item { font-size: 0.7rem; }
+      .legend-tile { width: 14px; height: 14px; }
+      #demo-grid { --tile-size: 30px; }
+      #start-btn { margin-top: 0; padding: 9px 24px; font-size: 0.9rem; }
+    }
+
     /* ── Launch animation ────────────────────────────────────────────────── */
 
     #launch-overlay {
@@ -291,14 +374,30 @@
   </style>
 </head>
 <body>
-  <div id="message"></div>
-  <div id="legend">
+  <div id="intro">
+    <div class="intro-inner">
+      <h1>Le Wordle des mariés</h1>
+      <p>C'est le principe de <strong>Motus</strong>, le jeu télé&nbsp;: il faut deviner un mot caché en 6 essais.</p>
+      <p>À chaque essai tu proposes un vrai mot de la bonne longueur, et les cases se colorent pour te mettre sur la piste&nbsp;:</p>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-tile green"></span>Bonne lettre, bonne place</div>
+        <div class="legend-item"><span class="legend-tile yellow"></span>Bonne lettre, mauvaise place</div>
+        <div class="legend-item"><span class="legend-tile grey"></span>Lettre absente du mot</div>
+      </div>
+      <p class="intro-example">Par exemple, si le mot caché est <strong>FLEUR</strong>&nbsp;:</p>
+      <div id="demo-grid"></div>
+      <p>À toi de jouer&nbsp;: 6 mots à trouver, de 5 à 8 lettres.</p>
+      <button id="start-btn">C'est parti&nbsp;!</button>
+    </div>
+  </div>
+  <div id="message" style="display: none"></div>
+  <div id="legend" class="legend" style="display: none">
     <div class="legend-item"><span class="legend-tile green"></span>Bonne lettre, bonne place</div>
     <div class="legend-item"><span class="legend-tile yellow"></span>Bonne lettre, mauvaise place</div>
     <div class="legend-item"><span class="legend-tile grey"></span>Lettre absente du mot</div>
   </div>
-  <div id="grid"></div>
-  <div id="keyboard"></div>
+  <div id="grid" style="display: none"></div>
+  <div id="keyboard" style="display: none"></div>
   <button id="next-btn">Mot suivant</button>
   <div id="recap">
     <h2>Bravo, tu as fini !</h2>
